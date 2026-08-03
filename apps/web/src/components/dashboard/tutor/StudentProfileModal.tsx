@@ -92,6 +92,14 @@ export default function StudentProfileModal({ student, isOpen, onClose }: Studen
                     <span className="text-sm text-slate-500">Materias Reprobadas</span>
                     <span className="font-medium text-red-600">{detailData.academicRecords?.[0]?.failedSubjects || 0} acumuladas</span>
                   </div>
+                  <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+                    <span className="text-sm font-medium text-indigo-600">Actividad LMS (Campus Virtual)</span>
+                    <span className="font-bold text-slate-900">
+                      {detailData.academicRecords?.[0]?.lmsScore !== undefined 
+                        ? detailData.academicRecords[0].lmsScore + ' pts' 
+                        : 'No registrado'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
