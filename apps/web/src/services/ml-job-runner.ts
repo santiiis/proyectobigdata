@@ -26,10 +26,23 @@ export async function runBatchInference(jobId: string, forceRetrain: boolean) {
       select: { id: true },
     });
 
+    // Update totalStudents count immediately
+    await prisma.batchJob.update({
+      where: { jobId },
+      data: { totalStudents: students.length },
+    });
+
     let processedCount = 0;
 
     // 2. Iterar e inferir (secuencial para no sobrecargar DB/FastAPI en lote pequeño)
     for (const student of students) {
+      // Check if job was cancelled before processing each student
+      const currentJob = await prisma.batchJob.findUnique({ where: { jobId } });
+      if (!currentJob || currentJob.status !== "PROCESSING") {
+        console.log(`[BATCH] Job ${jobId} was cancelled or completed. Stopping.`);
+        return;
+      }
+
       try {
         const features = await buildMLFeatures(student.id);
         const predictionResponse = await predictStudentRisk({

@@ -36,7 +36,8 @@ export async function POST(req: NextRequest) {
         where: { jobId },
         data: {
           status: "FAILED",
-          errorMessage: "Cancelado por el usuario."
+          errorMessage: "Cancelado por el usuario.",
+          processedAt: new Date()
         }
       });
       return NextResponse.json({ success: true, message: "Batch job cancelled" });

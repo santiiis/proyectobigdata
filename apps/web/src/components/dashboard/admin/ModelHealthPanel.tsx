@@ -76,12 +76,12 @@ export default function ModelHealthPanel() {
         <MetricCard title="Modelo Activo" value={kpis?.modelVersion || "v1.0.0"} icon={<Activity className="w-5 h-5 text-blue-600" />} />
         <MetricCard
           title="Predicciones Activas"
-          value={latestJob ? `${latestJob.totalStudents ?? 0}` : "—"}
+          value={kpis?.activePredictions?.toLocaleString() ?? "…"}
           icon={<Target className="w-5 h-5 text-blue-600" />}
         />
         <MetricCard
-          title="Último Lote"
-          value={latestJob ? (statusLabel[latestJob.status] || latestJob.status) : "Sin datos"}
+          title="Trabajos en Ejecución"
+          value={kpis?.activeJobs?.toString() ?? "0"}
           icon={<Crosshair className="w-5 h-5 text-blue-600" />}
         />
         <MetricCard

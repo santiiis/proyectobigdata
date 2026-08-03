@@ -6,8 +6,8 @@ export async function GET() {
     const totalStudents = await prisma.student.count();
     const activeUsers = await prisma.user.count({ where: { isActive: true } });
     const activeJobs = await prisma.batchJob.count({ where: { status: "PROCESSING" } });
+    const activePredictions = await prisma.prediction.count({ where: { isActive: true } });
 
-    // En un sistema real, modelVersion vendría de un config o del modelo más reciente en DB.
     const latestPrediction = await prisma.prediction.findFirst({
       orderBy: { createdAt: 'desc' },
       select: { modelVersion: true }
@@ -19,7 +19,8 @@ export async function GET() {
         totalStudents,
         activeUsers,
         modelVersion: latestPrediction?.modelVersion || "v1.0.0",
-        activeJobs
+        activeJobs,
+        activePredictions
       }
     });
   } catch (error) {
