@@ -37,8 +37,10 @@ async def health_check():
         "version": "0.1.0",
     }
 
-from app.api import predict, retrain, import_data
+from app.api import predict, retrain, import_data, clustering, anomalies
 
 app.include_router(predict.router, prefix="/api/v1", tags=["Predictions"])
 app.include_router(retrain.router, prefix="/api/v1", tags=["Model Training"])
 app.include_router(import_data.router, prefix="/api/v1", tags=["Data Import"])
+app.include_router(clustering.router, prefix="/api/v1", tags=["Clustering"])
+app.include_router(anomalies.router, prefix="/api/v1", tags=["Anomaly Detection"])

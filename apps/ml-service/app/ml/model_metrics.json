@@ -1,13 +1,16 @@
 {
   "recall": 0.5431,
-  "precision": 0.8967,
-  "f1": 0.6764,
-  "clean_recall": 0.9999,
-  "clean_precision": 0.9977,
-  "clean_f1": 0.9988,
-  "train_recall": 0.5434,
-  "train_precision": 0.8973,
-  "train_f1": 0.6769,
+  "precision": 0.8989,
+  "f1": 0.6771,
+  "auc_roc": 0.7605,
+  "clean_recall": 1.0,
+  "clean_precision": 1.0,
+  "clean_f1": 1.0,
+  "clean_auc": 1.0,
+  "train_recall": 0.5431,
+  "train_precision": 0.8988,
+  "train_f1": 0.677,
+  "train_auc": 0.7651,
   "samples": 65213,
   "at_risk_count": 7645,
   "not_at_risk_count": 57568,
@@ -20,17 +23,42 @@
     "lmsScore"
   ],
   "feature_importances": {
-    "gpa": 0.0,
+    "gpa": 0.1958,
     "failedSubjects": 0.0,
-    "attendanceRate": 0.0,
-    "lmsScore": 1.0
+    "attendanceRate": 0.0652,
+    "lmsScore": 0.7389
   },
   "hyperparameters": {
-    "algorithm": "DecisionTreeClassifier",
-    "max_depth": 6,
-    "min_samples_split": 30,
-    "min_samples_leaf": 15,
-    "class_weight": "balanced"
+    "algorithm": "RandomForestClassifier",
+    "n_estimators": 50,
+    "max_depth": 3,
+    "min_samples_split": 10,
+    "min_samples_leaf": 10,
+    "class_weight": "balanced",
+    "grid_search_params": {
+      "n_estimators": [
+        20,
+        50
+      ],
+      "max_depth": [
+        3,
+        7
+      ],
+      "min_samples_split": [
+        10,
+        20
+      ],
+      "min_samples_leaf": [
+        5,
+        10
+      ]
+    },
+    "best_params": {
+      "max_depth": 3,
+      "min_samples_leaf": 10,
+      "min_samples_split": 10,
+      "n_estimators": 50
+    }
   },
   "version": "0.1.0"
 }

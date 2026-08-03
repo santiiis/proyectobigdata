@@ -1,0 +1,43 @@
+{
+  "n_clusters": 3,
+  "silhouette_score": 0.7593,
+  "cluster_profiles": [
+    {
+      "cluster_id": 0,
+      "size": 47917,
+      "percentage": 73.48,
+      "mean_gpa": 7.0,
+      "mean_failed": 0.0,
+      "mean_attendance": 0.85,
+      "mean_lms": 59.34,
+      "label": "Bajo Riesgo"
+    },
+    {
+      "cluster_id": 1,
+      "size": 10,
+      "percentage": 0.02,
+      "mean_gpa": 5.02,
+      "mean_failed": 1.8,
+      "mean_attendance": 0.664,
+      "mean_lms": 37.09,
+      "label": "Alto Riesgo"
+    },
+    {
+      "cluster_id": 2,
+      "size": 17286,
+      "percentage": 26.51,
+      "mean_gpa": 7.0,
+      "mean_failed": 0.0,
+      "mean_attendance": 0.85,
+      "mean_lms": 136.35,
+      "label": "Bajo Riesgo"
+    }
+  ],
+  "samples": 65213,
+  "features": [
+    "gpa",
+    "failedSubjects",
+    "attendanceRate",
+    "lmsScore"
+  ]
+}

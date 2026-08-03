@@ -60,9 +60,9 @@ export default function ModelHealthPanel() {
       <div className="mb-8">
         <h3 className="text-md font-bold text-slate-900 mb-4 flex items-center gap-2">
           <TrendingUp className="w-5 h-5 text-slate-500" />
-          Métricas del Modelo (entrenamiento)
+          Métricas del Modelo (Random Forest + Grid Search)
         </h3>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           <MetricCard
             title="Recall"
             value={mlMetrics?.recall != null ? `${(mlMetrics.recall * 100).toFixed(1)}%` : "—"}
@@ -78,9 +78,19 @@ export default function ModelHealthPanel() {
             value={mlMetrics?.f1 != null ? `${(mlMetrics.f1 * 100).toFixed(1)}%` : "—"}
             icon={<TrendingUp className="w-5 h-5 text-blue-600" />}
           />
+          <MetricCard
+            title="AUC-ROC"
+            value={mlMetrics?.auc_roc != null ? `${(mlMetrics.auc_roc * 100).toFixed(1)}%` : "—"}
+            icon={<TrendingUp className="w-5 h-5 text-purple-600" />}
+          />
         </div>
         {mlMetrics?.samples != null && mlMetrics.samples > 0 && (
-          <p className="text-xs text-slate-400 mt-2 text-right">Muestra: {mlMetrics.samples} registros de entrenamiento</p>
+          <p className="text-xs text-slate-400 mt-2 text-right">
+            Muestra: {mlMetrics.samples} registros | 
+            Algoritmo: {mlMetrics.hyperparameters?.algorithm || "RandomForest"} |
+            Trees: {mlMetrics.hyperparameters?.n_estimators || "—"} |
+            Depth: {mlMetrics.hyperparameters?.max_depth || "—"}
+          </p>
         )}
       </div>
 

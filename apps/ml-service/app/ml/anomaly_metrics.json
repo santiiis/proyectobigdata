@@ -1,0 +1,25 @@
+{
+  "n_anomalies": 3024,
+  "n_normal": 62189,
+  "anomaly_rate": 4.64,
+  "contamination": 0.05,
+  "anomaly_characteristics": {
+    "mean_gpa": 7.0,
+    "mean_failed": 0.0,
+    "mean_attendance": 0.85,
+    "mean_lms": 194.77
+  },
+  "normal_characteristics": {
+    "mean_gpa": 7.0,
+    "mean_failed": 0.0,
+    "mean_attendance": 0.85,
+    "mean_lms": 74.16
+  },
+  "samples": 65213,
+  "features": [
+    "gpa",
+    "failedSubjects",
+    "attendanceRate",
+    "lmsScore"
+  ]
+}

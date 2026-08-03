@@ -32,7 +32,7 @@ def get_model():
 @router.post("/predict", response_model=MLPredictResponse, dependencies=[Depends(verify_api_key)])
 async def predict_risk(request: MLPredictRequest):
     """
-    Run inference on student features using the trained RandomForest model.
+    Run inference on student features using the trained Random Forest model.
     """
     start_time = time.time()
     bundle = get_model()
