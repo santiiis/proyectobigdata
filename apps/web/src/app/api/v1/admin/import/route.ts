@@ -25,7 +25,8 @@ export async function POST(req: NextRequest) {
     });
 
     // Forward the actual file bytes to the FastAPI backend (multipart)
-    const backendUrl = process.env.ML_SERVICE_URL || "http://localhost:8000/api/v1/import/oulad";
+    const mlServiceUrl = process.env.ML_SERVICE_URL || "http://localhost:8000";
+    const backendUrl = `${mlServiceUrl}/api/v1/import/oulad`;
     const apiKey = process.env.ML_API_KEY || "ml-api-key-cambiar-en-produccion";
 
     const body = new FormData();
