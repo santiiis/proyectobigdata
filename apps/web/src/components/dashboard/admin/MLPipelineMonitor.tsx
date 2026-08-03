@@ -1,24 +1,50 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Play, Activity, Loader2 } from "lucide-react";
+import { Play, Activity, Loader2, StopCircle } from "lucide-react";
 import useSWR from "swr";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json()).then(res => res.data);
 
 export default function MLPipelineMonitor() {
   const [triggering, setTriggering] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [localLogs, setLocalLogs] = useState<string[]>([]);
   const [semesterCode, setSemesterCode] = useState<string>("");
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   // Poll for the latest job every 3 seconds
-  const { data: latestJob } = useSWR("/api/v1/admin/batch-jobs/latest", fetcher, { refreshInterval: 3000 });
+  const { data: latestJob, mutate: mutateLatestJob } = useSWR("/api/v1/admin/batch-jobs/latest", fetcher, { refreshInterval: 3000 });
 
   const { data: semesters } = useSWR("/api/v1/admin/semesters", fetcher);
   const availableSemesters = semesters || [];
 
   const isRunning = latestJob?.status === "PROCESSING" || triggering;
+
+  const handleCancel = async () => {
+    if (!latestJob?.jobId) return;
+    if (!confirm("¿Estás seguro de cancelar el proceso de predicción?")) return;
+    
+    setCancelling(true);
+    try {
+      const res = await fetch("/api/v1/admin/import/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: latestJob.jobId }),
+      });
+      
+      if (res.ok) {
+        mutateLatestJob();
+        setLocalLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Proceso cancelado por el usuario.`]);
+      } else {
+        setLocalLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Error al cancelar el proceso.`]);
+      }
+    } catch (err) {
+      setLocalLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Error de conexión al cancelar.`]);
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const handleTrigger = async () => {
     if (isRunning) return;
@@ -106,6 +132,20 @@ export default function MLPipelineMonitor() {
               </>
             )}
           </button>
+          {isRunning && (
+            <button
+              onClick={handleCancel}
+              disabled={cancelling}
+              className="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white transition-all shadow-sm disabled:opacity-50"
+            >
+              {cancelling ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <StopCircle className="w-4 h-4" />
+              )}
+              Cancelar
+            </button>
+          )}
         </div>
       </div>
       

@@ -10,40 +10,48 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "jobId is required" }, { status: 400 });
     }
 
-    // Find the job
-    const job = await prisma.importJob.findUnique({
+    // Try to cancel as import job
+    const importJob = await prisma.importJob.findUnique({
       where: { jobId }
     });
 
-    if (!job) {
-      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    if (importJob && importJob.status === "PROCESSING") {
+      await prisma.importJob.update({
+        where: { jobId },
+        data: {
+          status: "FAILED",
+          errorMessage: "Cancelado por el usuario."
+        }
+      });
     }
 
-    if (job.status !== "PROCESSING") {
-      return NextResponse.json({ error: "Job is not in PROCESSING status" }, { status: 400 });
-    }
-
-    // Cancel the job
-    await prisma.importJob.update({
-      where: { jobId },
-      data: {
-        status: "FAILED",
-        errorMessage: "Cancelado por el usuario."
-      }
+    // Try to cancel as batch job
+    const batchJob = await prisma.batchJob.findUnique({
+      where: { jobId }
     });
 
-    // Also try to cancel batch jobs related to this import
+    if (batchJob && batchJob.status === "PROCESSING") {
+      await prisma.batchJob.update({
+        where: { jobId },
+        data: {
+          status: "FAILED",
+          errorMessage: "Cancelado por el usuario."
+        }
+      });
+    }
+
+    // Also cancel any other processing batch jobs
     await prisma.batchJob.updateMany({
       where: {
         status: "PROCESSING"
       },
       data: {
         status: "FAILED",
-        errorMessage: "Cancelado por el usuario (importación cancelada)."
+        errorMessage: "Cancelado por el usuario."
       }
     });
 
-    return NextResponse.json({ success: true, message: "Job cancelled" });
+    return NextResponse.json({ success: true, message: "Job(s) cancelled" });
   } catch (error: any) {
     console.error("Cancel error:", error);
     return NextResponse.json(
