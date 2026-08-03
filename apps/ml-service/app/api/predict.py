@@ -17,16 +17,17 @@ import os
 import joblib
 import pandas as pd
 
-# Global model cache
-_model = None
+# Global model/scaler cache
+_model_bundle = None
 
 def get_model():
-    global _model
-    if _model is None:
+    global _model_bundle
+    if _model_bundle is None:
         model_path = os.path.join(os.path.dirname(__file__), '..', 'ml', 'model.joblib')
         if os.path.exists(model_path):
-            _model = joblib.load(model_path)
-    return _model
+            _model_bundle = joblib.load(model_path)
+    return _model_bundle
+
 
 @router.post("/predict", response_model=MLPredictResponse, dependencies=[Depends(verify_api_key)])
 async def predict_risk(request: MLPredictRequest):
@@ -34,11 +35,17 @@ async def predict_risk(request: MLPredictRequest):
     Run inference on student features using the trained RandomForest model.
     """
     start_time = time.time()
-    model = get_model()
+    bundle = get_model()
     
-    if model is None:
-        # Fallback heurístico si no hay modelo entrenado: el riesgo se deriva
-        # de las características reales del estudiante en vez de un valor fijo.
+    features_df = pd.DataFrame([{
+        'gpa': request.features.gpa or 0,
+        'failedSubjects': request.features.failedSubjectsCount or 0,
+        'attendanceRate': request.features.attendanceRate or 0,
+        'lmsScore': request.features.lmsActivityScore or 0,
+    }])
+    
+    if bundle is None:
+        # Fallback heuristico si no hay modelo entrenado
         gpa = max(0.0, min(float(request.features.gpa or 0), 10.0))
         failed = max(0, int(request.features.failedSubjectsCount or 0))
         attendance = max(0.0, min(float(request.features.attendanceRate or 0), 1.0))
@@ -50,17 +57,15 @@ async def predict_risk(request: MLPredictRequest):
         base += (1 - lms) * 0.12
         score = round(min(base, 0.95), 4)
     else:
-        # The model was trained on ['gpa', 'failedSubjects', 'attendanceRate', 'lmsScore']
-        X_df = pd.DataFrame([{
-            'gpa': request.features.gpa,
-            'failedSubjects': request.features.failedSubjectsCount,
-            'attendanceRate': request.features.attendanceRate,
-            'lmsScore': request.features.lmsActivityScore
-        }])
+        model = bundle['model']
+        scaler = bundle['scaler']
         
-        # predict_proba returns [[prob_0, prob_1]]
-        proba = model.predict_proba(X_df)[0]
-        score = float(proba[1]) # Probability of being AtRisk
+        # Scale features using the same scaler from training
+        X_scaled = scaler.transform(features_df)
+        X_scaled_df = pd.DataFrame(X_scaled, columns=features_df.columns)
+        
+        proba = model.predict_proba(X_scaled_df)[0]
+        score = float(proba[1])  # Probability of being AtRisk
         
     risk_level = "LOW"
     if score >= 0.66:
@@ -74,8 +79,11 @@ async def predict_risk(request: MLPredictRequest):
         factors.append(f"Asistencia baja ({(request.features.attendanceRate * 100):.1f}%)")
     if request.features.gpa < 6.0:
         factors.append(f"GPA bajo ({request.features.gpa})")
-    if request.features.failedSubjectsCount > 0:
+    if request.features.failedSubjectsCount >= 2:
         factors.append(f"Materias reprobadas: {request.features.failedSubjectsCount}")
+    lms_threshold = 60.0  # Matches training threshold (30th percentile)
+    if request.features.lmsActivityScore < lms_threshold:
+        factors.append(f"Actividad LMS baja ({request.features.lmsActivityScore:.2f})")
         
     if not factors:
         factors.append("Rendimiento estable")
