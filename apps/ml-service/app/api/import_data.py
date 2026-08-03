@@ -219,16 +219,9 @@ async def import_oulad_data(
 
 def _run_import_sync(job_id: str, file_path: str):
     """Wrapper to run import in a thread pool so it doesn't get cancelled."""
-    import asyncio
     try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # We're inside an async context, run in thread
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                pool.submit(process_oulad_import, job_id, file_path).result()
-        else:
-            loop.run_until_complete(run_in_threadpool(process_oulad_import, job_id, file_path))
+        # BackgroundTasks runs synchronous functions in a thread pool automatically.
+        process_oulad_import(job_id, file_path)
     except Exception as e:
         print(f"[IMPORT] Fatal error in _run_import_sync: {e}")
         import traceback

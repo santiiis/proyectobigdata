@@ -60,10 +60,19 @@ function DropdownMenu({ studentId, onClose, onOpenProfile }: { studentId: string
 }
 
 export default function StudentsRiskTable() {
-  const { data: responseData, error } = useSWR('/api/v1/students?limit=50', fetcher, {
-    refreshInterval: 10000,
-    revalidateOnFocus: true,
-  });
+  const [page, setPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [careerFilter, setCareerFilter] = useState('Todas');
+  const [riskFilter, setRiskFilter] = useState('Todos');
+  
+  const { data: responseData, error } = useSWR(
+    `/api/v1/students?limit=50&page=${page}&search=${encodeURIComponent(searchTerm)}&career=${encodeURIComponent(careerFilter)}&risk=${encodeURIComponent(riskFilter)}`, 
+    fetcher, 
+    {
+      refreshInterval: 10000,
+      revalidateOnFocus: true,
+    }
+  );
   
   const rawStudents = responseData || [];
   const dbStudents: Student[] = rawStudents.map((s: any) => {
@@ -102,10 +111,6 @@ export default function StudentsRiskTable() {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [careerFilter, setCareerFilter] = useState('Todas');
-  const [riskFilter, setRiskFilter] = useState('Todos');
   const [sortColumn, setSortColumn] = useState<keyof Student | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
@@ -129,17 +134,8 @@ export default function StudentsRiskTable() {
   };
 
   const filteredAndSortedStudents = useMemo(() => {
-    let result = dbStudents.filter((student: Student) => {
-      const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCareer = careerFilter === 'Todas' || student.career === careerFilter;
-      
-      let matchesRisk = true;
-      if (riskFilter === 'Alto') matchesRisk = student.riskLevel === 'High' || student.riskLevel === 'HIGH';
-      else if (riskFilter === 'Medio') matchesRisk = student.riskLevel === 'Medium' || student.riskLevel === 'MEDIUM';
-      else if (riskFilter === 'Bajo') matchesRisk = student.riskLevel === 'Low' || student.riskLevel === 'LOW';
-
-      return matchesSearch && matchesCareer && matchesRisk;
-    });
+    // Filter is already applied by backend, so we just sort here
+    let result = [...dbStudents];
 
     if (sortColumn) {
       result.sort((a, b) => {
@@ -154,7 +150,8 @@ export default function StudentsRiskTable() {
     return result;
   }, [searchTerm, careerFilter, riskFilter, sortColumn, sortDirection, dbStudents]);
 
-  const uniqueCareers = ['Todas', ...Array.from(new Set(dbStudents.map((s: Student) => s.career)))];
+  // Fallback to static careers for now, since dynamic would require a separate query
+  const uniqueCareers = ['Todas', 'Ingeniería de Sistemas', 'Ingeniería Industrial', 'Medicina'];
 
   const renderSortIcon = (column: keyof Student) => {
     if (sortColumn !== column) return null;
@@ -182,13 +179,13 @@ export default function StudentsRiskTable() {
                 placeholder="Buscar por nombre..."
                 className="pl-9 w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
               />
             </div>
             <select
               className="bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
               value={careerFilter}
-              onChange={(e) => setCareerFilter(e.target.value)}
+              onChange={(e) => { setCareerFilter(e.target.value); setPage(1); }}
             >
               {uniqueCareers.map(career => (
                 <option key={career} value={career}>{career}</option>
@@ -197,7 +194,7 @@ export default function StudentsRiskTable() {
             <select
               className="bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
               value={riskFilter}
-              onChange={(e) => setRiskFilter(e.target.value)}
+              onChange={(e) => { setRiskFilter(e.target.value); setPage(1); }}
             >
               <option value="Todos">Todos los niveles</option>
               <option value="Alto">Riesgo Alto</option>
@@ -294,6 +291,25 @@ export default function StudentsRiskTable() {
               )}
             </tbody>
           </table>
+        </div>
+        
+        {/* Paginación */}
+        <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+          >
+            Anterior
+          </button>
+          <span className="text-sm text-slate-600 font-medium">Página {page}</span>
+          <button
+            onClick={() => setPage(p => p + 1)}
+            disabled={rawStudents.length < 50}
+            className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+          >
+            Siguiente
+          </button>
         </div>
       </div>
 

@@ -70,7 +70,7 @@ async def predict_risk(request: MLPredictRequest):
     risk_level = "LOW"
     if score >= 0.66:
         risk_level = "HIGH"
-    elif score >= 0.31:
+    elif score >= 0.40:
         risk_level = "MEDIUM"
         
     # Generate dynamic risk factors based on features
