@@ -15,46 +15,54 @@ def process_oulad_import(job_id: str, file_path: str):
     """
     Background worker that unzips/reads parquet, transforms, and bulk inserts to MySQL.
     """
-    print(f"[IMPORT] Starting import for job {job_id}, file: {file_path}")
+    print(f"[IMPORT] Starting import for job {job_id}, file: {file_path}", flush=True)
     engine = create_engine(settings.DATABASE_URL)
     
     def update_job_status(status: str, processed: int = 0, error: str = None, total_records: int = None):
-        with engine.begin() as conn:
-            if total_records is not None:
-                conn.execute(
-                    text("""
-                    UPDATE import_jobs 
-                    SET status = :status, processed = :processed, totalRecords = :total_records, errorMessage = :error, updatedAt = NOW()
-                    WHERE jobId = :job_id
-                    """),
-                    {"status": status, "processed": processed, "total_records": total_records, "error": error, "job_id": job_id}
-                )
-            else:
-                conn.execute(
-                    text("""
-                    UPDATE import_jobs 
-                    SET status = :status, processed = :processed, errorMessage = :error, updatedAt = NOW()
-                    WHERE jobId = :job_id
-                    """),
-                    {"status": status, "processed": processed, "error": error, "job_id": job_id}
-                )
+        try:
+            with engine.begin() as conn:
+                if total_records is not None:
+                    conn.execute(
+                        text("""
+                        UPDATE import_jobs 
+                        SET status = :status, processed = :processed, totalRecords = :total_records, errorMessage = :error, updatedAt = NOW()
+                        WHERE jobId = :job_id
+                        """),
+                        {"status": status, "processed": processed, "total_records": total_records, "error": error, "job_id": job_id}
+                    )
+                else:
+                    conn.execute(
+                        text("""
+                        UPDATE import_jobs 
+                        SET status = :status, processed = :processed, errorMessage = :error, updatedAt = NOW()
+                        WHERE jobId = :job_id
+                        """),
+                        {"status": status, "processed": processed, "error": error, "job_id": job_id}
+                    )
+            print(f"[IMPORT] Updated job {job_id} status to {status}", flush=True)
+        except Exception as e:
+            print(f"[IMPORT] ERROR updating job status: {e}", flush=True)
 
     try:
         if not os.path.exists(file_path):
             raise Exception("El archivo no fue encontrado en el servidor.")
+
+        print(f"[IMPORT] File exists, checking size: {os.path.getsize(file_path)} bytes", flush=True)
+        update_job_status("PROCESSING", processed=0)
 
         # Handle extraction if it's a zip
         target_dir = os.path.dirname(file_path)
         extract_dir = os.path.join(target_dir, f"extracted_{job_id}")
         
         if file_path.endswith('.zip'):
+            print(f"[IMPORT] Extracting zip file...", flush=True)
             with zipfile.ZipFile(file_path, 'r') as zip_ref:
                 zip_ref.extractall(extract_dir)
+            print(f"[IMPORT] Extracted to {extract_dir}", flush=True)
         else:
             extract_dir = file_path
 
-        # Collect all .parquet files recursively (handles single file and
-        # hive-partitioned directories like code_module=.../code_presentation=...)
+        # Collect all .parquet files recursively
         parquet_files = []
         if os.path.isfile(extract_dir):
             parquet_files = [extract_dir]
@@ -64,16 +72,16 @@ def process_oulad_import(job_id: str, file_path: str):
                     if f.endswith('.parquet'):
                         parquet_files.append(os.path.join(root, f))
 
+        print(f"[IMPORT] Found {len(parquet_files)} parquet files", flush=True)
         if not parquet_files:
             raise Exception("No se encontraron archivos .parquet en el paquete subido.")
 
-        print(f"[IMPORT] Found {len(parquet_files)} parquet files")
         # Read Parquet files using PyArrow dataset (directory/partition aware)
-        update_job_status("PROCESSING", processed=0)
+        print(f"[IMPORT] Reading parquet files...", flush=True)
         df = pq.ParquetDataset(parquet_files).read().to_pandas()
         
         total_rows = len(df)
-        print(f"[IMPORT] Read {total_rows} rows, columns: {list(df.columns)}")
+        print(f"[IMPORT] Read {total_rows} rows, columns: {list(df.columns)}", flush=True)
         if total_rows == 0:
             raise Exception("El dataset Parquet está vacío.")
 
@@ -107,9 +115,9 @@ def process_oulad_import(job_id: str, file_path: str):
         
         if not new_students.empty:
             new_students.to_sql('students', con=engine, if_exists='append', index=False)
-            print(f"[IMPORT] Inserted {len(new_students)} new students")
+            print(f"[IMPORT] Inserted {len(new_students)} new students", flush=True)
         else:
-            print(f"[IMPORT] No new students to insert (all exist)")
+            print(f"[IMPORT] No new students to insert (all exist)", flush=True)
             
         # Re-fetch to get all valid IDs
         with engine.begin() as conn:
@@ -146,14 +154,14 @@ def process_oulad_import(job_id: str, file_path: str):
         # Insert records
         update_job_status("PROCESSING", processed=int(total_rows * 0.5), total_records=total_rows)
         records_to_insert.to_sql('academic_records', con=engine, if_exists='append', index=False)
-        print(f"[IMPORT] Inserted {len(records_to_insert)} academic records")
+        print(f"[IMPORT] Inserted {len(records_to_insert)} academic records", flush=True)
         
         # Update success
         update_job_status("COMPLETED", processed=total_rows, total_records=total_rows)
-        print(f"[IMPORT] Job {job_id} completed successfully with {total_rows} rows")
+        print(f"[IMPORT] Job {job_id} completed successfully with {total_rows} rows", flush=True)
 
     except Exception as e:
-        print(f"[IMPORT] ERROR: {str(e)}")
+        print(f"[IMPORT] ERROR: {str(e)}", flush=True)
         import traceback
         traceback.print_exc()
         update_job_status("FAILED", error=str(e))

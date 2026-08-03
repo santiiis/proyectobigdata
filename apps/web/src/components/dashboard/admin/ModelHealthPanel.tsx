@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Activity, Target, Crosshair, BarChart2, History, Loader2, TrendingUp } from "lucide-react";
+import { Activity, Target, Crosshair, BarChart2, History, Loader2, TrendingUp, RefreshCw } from "lucide-react";
 import useSWR from "swr";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json()).then(res => res.data);
@@ -13,10 +13,10 @@ const statusLabel: Record<string, string> = {
 };
 
 export default function ModelHealthPanel() {
-  const { data: kpis } = useSWR('/api/v1/admin/kpis', fetcher);
-  const { data: latestJob } = useSWR('/api/v1/admin/batch-jobs/latest', fetcher);
-  const { data: importJobs } = useSWR('/api/v1/admin/import/jobs?limit=5', fetcher);
-  const { data: mlMetrics } = useSWR('/api/v1/admin/ml-metrics', fetcher);
+  const { data: kpis } = useSWR('/api/v1/admin/kpis', fetcher, { refreshInterval: 5000 });
+  const { data: latestJob } = useSWR('/api/v1/admin/batch-jobs/latest', fetcher, { refreshInterval: 5000 });
+  const { data: importJobs } = useSWR('/api/v1/admin/import/jobs?limit=5', fetcher, { refreshInterval: 5000 });
+  const { data: mlMetrics } = useSWR('/api/v1/admin/ml-metrics', fetcher, { refreshInterval: 10000 });
 
   const history = (importJobs || []).map((job: any) => ({
     id: job.id,
@@ -95,10 +95,19 @@ export default function ModelHealthPanel() {
       </div>
 
       <div>
-        <h3 className="text-md font-bold text-slate-900 mb-4 flex items-center gap-2">
-          <History className="w-5 h-5 text-slate-500" />
-          Actividad Reciente de Importación
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-md font-bold text-slate-900 flex items-center gap-2">
+            <History className="w-5 h-5 text-slate-500" />
+            Actividad Reciente de Importación
+          </h3>
+          <button
+            onClick={() => window.location.reload()}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refrescar
+          </button>
+        </div>
         {!importJobs ? (
           <div className="flex items-center justify-center py-8 text-slate-400 gap-2">
             <Loader2 className="w-4 h-4 animate-spin" /> Cargando...

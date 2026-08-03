@@ -13,6 +13,34 @@ export async function GET(request: NextRequest) {
       take: limit,
     });
 
+    // Auto-detect stuck jobs (PROCESSING for more than 5 minutes)
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const stuckJobs = await prisma.importJob.findMany({
+      where: {
+        status: "PROCESSING",
+        createdAt: { lt: fiveMinutesAgo }
+      }
+    });
+
+    if (stuckJobs.length > 0) {
+      await prisma.importJob.updateMany({
+        where: {
+          id: { in: stuckJobs.map(j => j.id) }
+        },
+        data: {
+          status: "FAILED",
+          errorMessage: "Timeout: El proceso tardó demasiado tiempo."
+        }
+      });
+      
+      // Re-fetch jobs after cleanup
+      const updatedJobs = await prisma.importJob.findMany({
+        orderBy: { createdAt: "desc" },
+        take: limit,
+      });
+      return successResponse(updatedJobs);
+    }
+
     return successResponse(jobs);
   } catch (error) {
     if (error instanceof AppError) return errorResponse(error);
