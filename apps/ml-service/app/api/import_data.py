@@ -1,17 +1,14 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Header
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Header, File, UploadFile, Form
 import os
+import shutil
+import tempfile
 import zipfile
 import pandas as pd
-import glob
+import pyarrow.parquet as pq
 from sqlalchemy import create_engine, text
 from app.core.config import settings
 
 router = APIRouter()
-
-class ImportRequest(BaseModel):
-    jobId: str
-    filePath: str
 
 def process_oulad_import(job_id: str, file_path: str):
     """
@@ -44,17 +41,23 @@ def process_oulad_import(job_id: str, file_path: str):
         else:
             extract_dir = file_path
 
-        # Find the actual directory containing the parquet files or partitions
-        # It could be extract_dir/content/oulad_parquet_output or similar
-        parquet_root = extract_dir
-        for root, dirs, files in os.walk(extract_dir):
-            if any(d.startswith('code_module=') for d in dirs) or any(f.endswith('.parquet') for f in files):
-                parquet_root = root
-                break
+        # Collect all .parquet files recursively (handles single file and
+        # hive-partitioned directories like code_module=.../code_presentation=...)
+        parquet_files = []
+        if os.path.isfile(extract_dir):
+            parquet_files = [extract_dir]
+        else:
+            for root, dirs, files in os.walk(extract_dir):
+                for f in files:
+                    if f.endswith('.parquet'):
+                        parquet_files.append(os.path.join(root, f))
 
-        # Read Parquet files using Pandas
+        if not parquet_files:
+            raise Exception("No se encontraron archivos .parquet en el paquete subido.")
+
+        # Read Parquet files using PyArrow dataset (directory/partition aware)
         update_job_status("PROCESSING", processed=0)
-        df = pd.read_parquet(parquet_root, engine='pyarrow')
+        df = pq.ParquetDataset(parquet_files).read().to_pandas()
         
         total_rows = len(df)
         if total_rows == 0:
@@ -67,7 +70,9 @@ def process_oulad_import(job_id: str, file_path: str):
         # Drop duplicates to get unique students
         students_df = df.drop_duplicates(subset=[student_id_col]).copy()
         
-        # We need to map to: studentCode, firstName, lastName, email, careerId, currentSemester, status
+        from datetime import datetime
+        now = datetime.now()
+
         students_to_insert = pd.DataFrame({
             'studentCode': students_df[student_id_col].astype(str),
             'firstName': 'OULAD',
@@ -75,7 +80,8 @@ def process_oulad_import(job_id: str, file_path: str):
             'email': students_df[student_id_col].astype(str) + "@oulad.edu",
             'careerId': 1,
             'currentSemester': 1,
-            'status': 'ACTIVE'
+            'status': 'ACTIVE',
+            'updatedAt': now
         })
         
         # To avoid duplicate key errors, fetch existing students
@@ -139,24 +145,41 @@ def process_oulad_import(job_id: str, file_path: str):
         
         if 'extract_dir' in locals() and os.path.exists(extract_dir):
             try:
-                import shutil
                 shutil.rmtree(extract_dir)
+            except:
+                pass
+
+        # Remove the temp dir created for this job
+        target_dir = os.path.dirname(file_path)
+        if os.path.exists(target_dir):
+            try:
+                shutil.rmtree(target_dir)
             except:
                 pass
 
 
 @router.post("/import/oulad")
 async def import_oulad_data(
-    req: ImportRequest, 
     background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    jobId: str = Form(...),
     x_worker_secret: str = Header(None)
 ):
     """
     Protected endpoint to start OULAD data ingestion in the background.
+    Recibe el archivo (.zip o .parquet) directamente vía multipart/form-data
+    para que funcione tanto local como dentro de Docker.
     """
     if x_worker_secret != settings.ML_API_KEY:
         raise HTTPException(status_code=403, detail="Invalid worker secret")
-        
-    background_tasks.add_task(process_oulad_import, req.jobId, req.filePath)
-    
-    return {"status": "accepted", "jobId": req.jobId}
+
+    # Persistir el archivo en un directorio temporal del ML service
+    temp_dir = tempfile.mkdtemp(prefix="oulad_import_")
+    file_path = os.path.join(temp_dir, file.filename or "import.zip")
+
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    background_tasks.add_task(process_oulad_import, jobId, file_path)
+
+    return {"status": "accepted", "jobId": jobId}
