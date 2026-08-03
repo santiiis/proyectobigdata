@@ -15,10 +15,14 @@ export async function GET(request: NextRequest) {
     const whereClause: any = {};
     
     if (search) {
-      whereClause.OR = [
-        { firstName: { contains: search } },
-        { lastName: { contains: search } }
-      ];
+      const searchTerms = search.split(' ').filter(Boolean);
+      whereClause.AND = searchTerms.map(term => ({
+        OR: [
+          { firstName: { contains: term } },
+          { lastName: { contains: term } },
+          { studentCode: { contains: term } }
+        ]
+      }));
     }
     
     if (career !== "Todas") {
