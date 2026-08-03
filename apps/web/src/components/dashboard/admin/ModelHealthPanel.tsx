@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Activity, Target, Crosshair, BarChart2, History, Loader2, TrendingUp, RefreshCw, StopCircle } from "lucide-react";
 import useSWR from "swr";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json()).then(res => res.data);
 
@@ -18,29 +19,35 @@ export default function ModelHealthPanel() {
   const { data: importJobs, mutate: mutateImportJobs } = useSWR('/api/v1/admin/import/jobs?limit=5', fetcher, { refreshInterval: 5000 });
   const { data: mlMetrics } = useSWR('/api/v1/admin/ml-metrics', fetcher, { refreshInterval: 10000 });
   const [cancelling, setCancelling] = useState<string | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelJobId, setCancelJobId] = useState<string | null>(null);
 
-  const handleCancel = async (jobId: string) => {
-    if (!confirm("¿Estás seguro de cancelar este proceso?")) return;
+  const handleCancelClick = (jobId: string) => {
+    setCancelJobId(jobId);
+    setShowCancelModal(true);
+  };
+
+  const handleCancel = async () => {
+    if (!cancelJobId) return;
     
-    setCancelling(jobId);
+    setCancelling(cancelJobId);
     try {
       const res = await fetch("/api/v1/admin/import/cancel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobId }),
+        body: JSON.stringify({ jobId: cancelJobId }),
       });
       
       if (res.ok) {
         mutateImportJobs();
         mutateKpis();
-        alert("Proceso cancelado exitosamente.");
-      } else {
-        alert("Error al cancelar el proceso.");
       }
     } catch (err) {
-      alert("Error de conexión al cancelar.");
+      // silent
     } finally {
       setCancelling(null);
+      setShowCancelModal(false);
+      setCancelJobId(null);
     }
   };
 
@@ -176,7 +183,7 @@ export default function ModelHealthPanel() {
                     <td className="py-3">
                       {row.rawStatus === 'PROCESSING' && (
                         <button
-                          onClick={() => handleCancel(row.jobId)}
+                          onClick={() => handleCancelClick(row.jobId)}
                           disabled={cancelling === row.jobId}
                           className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50"
                         >
@@ -196,6 +203,18 @@ export default function ModelHealthPanel() {
           </div>
         )}
       </div>
+
+      {/* Cancel Modal */}
+      <ConfirmModal
+        isOpen={showCancelModal}
+        title="Cancelar Importación"
+        message="¿Estás seguro de que deseas cancelar este proceso de importación? El job se marcará como fallido."
+        confirmText="Sí, cancelar"
+        cancelText="No, continuar"
+        onConfirm={handleCancel}
+        onCancel={() => { setShowCancelModal(false); setCancelJobId(null); }}
+        loading={cancelling !== null}
+      />
     </div>
   );
 }

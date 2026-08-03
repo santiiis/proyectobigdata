@@ -3,12 +3,14 @@
 import { useState, useRef, useEffect } from "react";
 import { Play, Activity, Loader2, StopCircle } from "lucide-react";
 import useSWR from "swr";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json()).then(res => res.data);
 
 export default function MLPipelineMonitor() {
   const [triggering, setTriggering] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [localLogs, setLocalLogs] = useState<string[]>([]);
   const [semesterCode, setSemesterCode] = useState<string>("");
   const logsEndRef = useRef<HTMLDivElement>(null);
@@ -23,7 +25,6 @@ export default function MLPipelineMonitor() {
 
   const handleCancel = async () => {
     if (!latestJob?.jobId) return;
-    if (!confirm("¿Estás seguro de cancelar el proceso de predicción?")) return;
     
     setCancelling(true);
     try {
@@ -43,6 +44,7 @@ export default function MLPipelineMonitor() {
       setLocalLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Error de conexión al cancelar.`]);
     } finally {
       setCancelling(false);
+      setShowCancelModal(false);
     }
   };
 
@@ -134,7 +136,7 @@ export default function MLPipelineMonitor() {
           </button>
           {isRunning && (
             <button
-              onClick={handleCancel}
+              onClick={() => setShowCancelModal(true)}
               disabled={cancelling}
               className="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white transition-all shadow-sm disabled:opacity-50"
             >
@@ -146,6 +148,20 @@ export default function MLPipelineMonitor() {
               Cancelar
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Cancel Modal */}
+      <ConfirmModal
+        isOpen={showCancelModal}
+        title="Cancelar Proceso"
+        message="¿Estás seguro de que deseas cancelar este proceso de predicción? El job se marcará como fallido y no se podrán recuperar los resultados parciales."
+        confirmText="Sí, cancelar"
+        cancelText="No, continuar"
+        onConfirm={handleCancel}
+        onCancel={() => setShowCancelModal(false)}
+        loading={cancelling}
+      />
         </div>
       </div>
       
