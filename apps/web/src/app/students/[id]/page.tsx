@@ -11,7 +11,8 @@ export const metadata: Metadata = {
   description: "Perfil extendido del estudiante, historial académico y predicción de riesgo",
 };
 
-export default function StudentProfilePage({ params }: { params: { id: string } }) {
+export default async function StudentProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-12">
       {/* Header simulado para contexto del sistema */}
@@ -32,22 +33,22 @@ export default function StudentProfilePage({ params }: { params: { id: string } 
         
         {/* Sección 1: Perfil General */}
         <section>
-          <StudentProfileCard studentId={params.id} />
+          <StudentProfileCard studentId={id} />
         </section>
 
         {/* Sección 2: Evolución del Riesgo ML */}
         <section>
-          <PredictionHistoryChart studentId={params.id} />
+          <PredictionHistoryChart studentId={id} />
         </section>
 
         {/* Sección 3: Historial Académico */}
         <section>
-          <AcademicHistoryTable studentId={params.id} />
+          <AcademicHistoryTable studentId={id} />
         </section>
 
         {/* Sección 4: Intervenciones */}
         <section>
-          <StudentInterventions studentId={params.id} />
+          <StudentInterventions studentId={id} />
         </section>
 
       </main>

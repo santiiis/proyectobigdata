@@ -36,7 +36,8 @@ export function StudentProfileCard({ studentId }: { studentId: string }) {
     HIGH: "bg-rose-100 text-rose-700",
   };
 
-  const currentRisk = data.activePrediction?.riskLevel || "LOW";
+  const currentPrediction = data.predictions?.[0];
+  const currentRisk = currentPrediction?.riskLevel || "LOW";
   const riskBadgeClass = riskColors[currentRisk];
 
   return (
@@ -65,9 +66,9 @@ export function StudentProfileCard({ studentId }: { studentId: string }) {
           <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
             {data.status}
           </span>
-          {data.activePrediction && (
+          {currentPrediction && (
             <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${riskBadgeClass}`}>
-              Riesgo {data.activePrediction.riskLevel}
+              Riesgo {currentPrediction.riskLevel}
             </span>
           )}
         </div>
@@ -89,7 +90,7 @@ export function StudentProfileCard({ studentId }: { studentId: string }) {
           </div>
           <div>
             <p className="text-xs text-slate-500 font-medium">Facultad</p>
-            <p className="text-sm font-semibold text-slate-800">{data.career.faculty}</p>
+            <p className="text-sm font-semibold text-slate-800">{data.career.faculty?.name || "Sin facultad"}</p>
           </div>
         </div>
       </div>

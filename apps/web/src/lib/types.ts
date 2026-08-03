@@ -49,7 +49,7 @@ export interface LoginResponseData {
     id: number;
     name: string;
     email: string;
-    role: "ADMIN" | "DIRECTOR" | "TUTOR";
+    role: "ADMIN" | "DIRECTOR" | "TUTOR" | "STUDENT";
   };
 }
 

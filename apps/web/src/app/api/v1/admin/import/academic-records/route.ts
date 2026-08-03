@@ -2,12 +2,9 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { successResponse } from "@/lib/responses";
 import { AppError, errorResponse } from "@/lib/errors";
-import fs from "fs";
-import path from "path";
-import os from "os";
 
 // Constantes
-const WORKER_SECRET = process.env.WORKER_SECRET || "internal-dev-secret-123";
+const WORKER_SECRET = process.env.ML_API_KEY || "ml-api-key-cambiar-en-produccion";
 const FASTAPI_URL = process.env.ML_SERVICE_URL || "http://127.0.0.1:8000";
 
 export async function POST(request: NextRequest) {
@@ -23,19 +20,9 @@ export async function POST(request: NextRequest) {
       throw new AppError("VALIDATION_ERROR", "Formato no soportado. Debe ser .zip o .parquet", 400);
     }
 
-    // 1. Save file locally to a temp directory
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    
-    const tempDir = os.tmpdir();
-    const fileName = `import_${Date.now()}_${file.name}`;
-    const filePath = path.join(tempDir, fileName);
-    
-    fs.writeFileSync(filePath, buffer);
-
-    // 2. Create the ImportJob
+    // 1. Create the ImportJob
     const jobId = `import_job_${Date.now()}`;
-    const importJob = await prisma.importJob.create({
+    await prisma.importJob.create({
       data: {
         jobId,
         fileName: file.name,
@@ -43,22 +30,30 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // 3. Dispatch to FastAPI as a background task
+    // 2. Forward the actual file bytes to FastAPI (multipart). Enviar la ruta
+    // local no funciona cuando el ML service corre en un contenedor Docker.
+    const body = new FormData();
+    body.append("file", file);
+    body.append("jobId", jobId);
+
     fetch(`${FASTAPI_URL}/api/v1/import/oulad`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         "x-worker-secret": WORKER_SECRET
       },
-      body: JSON.stringify({ 
-        jobId, 
-        filePath 
-      })
-    }).catch(err => {
+      body
+    }).catch(async (err) => {
       console.error("Failed to dispatch import to ML service:", err);
+      // Marcar el trabajo como fallido para que el frontend no quede en espera
+      try {
+        await prisma.importJob.update({
+          where: { jobId },
+          data: { status: "FAILED", errorMessage: "No se pudo conectar con el servicio de ML." }
+        });
+      } catch (_) {}
     });
 
-    // 4. Return immediately to the client
+    // 3. Return immediately to the client
     return successResponse({
       jobId,
       status: "PROCESSING",

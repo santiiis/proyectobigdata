@@ -54,7 +54,7 @@ export function AcademicHistoryTable({ studentId }: { studentId: string }) {
                 <tr key={record.id} className="hover:bg-slate-50 transition-colors">
                   <td className="py-4 px-4 font-medium text-slate-800">{record.period}</td>
                   <td className="py-4 px-4">
-                    <span className={`font-semibold ${record.gpa < 3.0 ? 'text-rose-600' : 'text-slate-700'}`}>
+                    <span className={`font-semibold ${record.gpa < 6.0 ? 'text-rose-600' : 'text-slate-700'}`}>
                       {record.gpa.toFixed(2)}
                     </span>
                   </td>
@@ -63,7 +63,11 @@ export function AcademicHistoryTable({ studentId }: { studentId: string }) {
                       {record.failedSubjects}
                     </span>
                   </td>
-                  <td className="py-4 px-4 text-slate-600">{record.attendanceRate}%</td>
+                  <td className="py-4 px-4 text-slate-600">
+                    {record.attendanceRate !== undefined && record.attendanceRate <= 1
+                      ? `${(record.attendanceRate * 100).toFixed(0)}%`
+                      : `${record.attendanceRate}%`}
+                  </td>
                   <td className="py-4 px-4 text-slate-600">{record.lmsScore} pts</td>
                   <td className="py-4 px-4 text-right text-slate-500">
                     {new Date(record.createdAt).toLocaleDateString('es-ES')}

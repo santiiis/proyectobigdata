@@ -16,6 +16,7 @@ export const createUserSchema = z.object({
 export const updateUserSchema = z.object({
   role: z.enum(["ADMIN", "DIRECTOR", "TUTOR"]).optional(),
   isActive: z.boolean().optional(),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres.").optional(),
 });
 
 export const userIdSchema = z.object({

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { updateUserSchema, userIdSchema } from "@/lib/validators/user";
+import { hashPassword } from "@/lib/auth";
 import { successResponse } from "@/lib/responses";
 import { AppError, errorResponse } from "@/lib/errors";
 
@@ -11,10 +12,11 @@ import { AppError, errorResponse } from "@/lib/errors";
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const parsedParams = userIdSchema.safeParse({ id: params.id });
+    const { id: userIdParam } = await params;
+    const parsedParams = userIdSchema.safeParse({ id: userIdParam });
     if (!parsedParams.success) {
       throw new AppError("VALIDATION_ERROR", "ID de usuario inválido", 400);
     }
@@ -28,7 +30,7 @@ export async function PATCH(
       throw new AppError("VALIDATION_ERROR", "Datos de entrada inválidos", 400, result.error.errors);
     }
 
-    const { role, isActive } = result.data;
+    const { role, isActive, password } = result.data;
 
     // Obtener usuario que realiza la petición
     const currentUserIdHeader = request.headers.get("x-user-id");
@@ -57,11 +59,17 @@ export async function PATCH(
       );
     }
 
+    let hashedPassword: string | undefined;
+    if (password) {
+      hashedPassword = await hashPassword(password);
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: targetUserId },
       data: {
         ...(role !== undefined && { role }),
         ...(isActive !== undefined && { isActive }),
+        ...(hashedPassword && { password: hashedPassword }),
       },
       select: {
         id: true,

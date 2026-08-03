@@ -39,20 +39,19 @@ export default function AuditLogTable() {
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-50 border-b border-slate-200 text-slate-500">
             <tr>
-              <th className="px-6 py-4 font-semibold whitespace-nowrap">Log ID</th>
+              <th className="px-6 py-4 font-semibold">Log ID</th>
               <th className="px-6 py-4 font-semibold">Usuario / Servicio</th>
               <th className="px-6 py-4 font-semibold">Acción</th>
-              <th className="px-6 py-4 font-semibold">Estado</th>
               <th className="px-6 py-4 font-semibold">Tiempo</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {error ? (
-              <tr><td colSpan={5} className="py-4 text-center text-red-500">Error cargando logs de auditoría</td></tr>
+              <tr><td colSpan={4} className="py-4 text-center text-red-500">Error cargando logs de auditoría</td></tr>
             ) : !logs ? (
-              <tr><td colSpan={5} className="py-4 text-center text-slate-500">Cargando...</td></tr>
+              <tr><td colSpan={4} className="py-4 text-center text-slate-500">Cargando...</td></tr>
             ) : visibleLogs.length === 0 ? (
-              <tr><td colSpan={5} className="py-4 text-center text-slate-500">No hay logs registrados</td></tr>
+              <tr><td colSpan={4} className="py-4 text-center text-slate-500">No hay logs registrados</td></tr>
             ) : (
               visibleLogs.map((log: any) => (
                 <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
@@ -77,12 +76,6 @@ export default function AuditLogTable() {
                   </td>
                   <td className="px-6 py-4 text-slate-700">
                     {log.action}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200/50`}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                      Éxito
-                    </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-slate-500 text-xs whitespace-nowrap flex items-center gap-1.5" suppressHydrationWarning>

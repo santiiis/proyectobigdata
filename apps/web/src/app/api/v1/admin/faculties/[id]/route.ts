@@ -6,10 +6,11 @@ import { AppError, errorResponse } from "@/lib/errors";
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const parsedParams = idSchema.safeParse({ id: params.id });
+    const { id: rawId } = await params;
+    const parsedParams = idSchema.safeParse({ id: rawId });
     if (!parsedParams.success) throw new AppError("VALIDATION_ERROR", "ID inválido", 400);
     const { id } = parsedParams.data;
 
@@ -41,10 +42,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const parsedParams = idSchema.safeParse({ id: params.id });
+    const { id: rawId } = await params;
+    const parsedParams = idSchema.safeParse({ id: rawId });
     if (!parsedParams.success) throw new AppError("VALIDATION_ERROR", "ID inválido", 400);
     const { id } = parsedParams.data;
 

@@ -11,10 +11,11 @@ import { AppError, errorResponse } from "@/lib/errors";
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const parsedParams = interventionIdSchema.safeParse({ id: params.id });
+    const { id: interventionIdParam } = await params;
+    const parsedParams = interventionIdSchema.safeParse({ id: interventionIdParam });
     if (!parsedParams.success) {
       throw new AppError("VALIDATION_ERROR", "ID de intervención inválido", 400);
     }

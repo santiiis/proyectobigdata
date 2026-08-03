@@ -48,21 +48,26 @@ const nextStatusLabel: Record<string, string> = {
 
 export default function InterventionKanban() {
   const { data: rawInterventions, error, mutate } = useSWR('/api/v1/interventions', fetcher);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const moveTask = async (taskId: string, currentStatus: string) => {
     const next = nextStatus[currentStatus];
     if (next) {
-      // In a real app, we would PUT/PATCH to `/api/v1/interventions/${taskId}`
-      // For now, we simulate optimistic UI or rely on mutate after real update.
-      // Since updating is not explicitly implemented in backend yet, we'll just mock local state?
-      // Wait, the spec says to just fetch them. I will mutate optimistically, but since we don't have PATCH, it will revert on next fetch.
-      // Let's implement a simple fetch PATCH just in case.
-      await fetch(`/api/v1/interventions/${taskId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: next })
-      });
-      mutate();
+      setActionError(null);
+      try {
+        const res = await fetch(`/api/v1/interventions/${taskId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: next })
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          throw new Error(json.error?.message || 'No se pudo actualizar el estado');
+        }
+        mutate();
+      } catch (err: any) {
+        setActionError(err.message || 'No se pudo actualizar el estado');
+      }
     }
   };
 
@@ -140,6 +145,11 @@ export default function InterventionKanban() {
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-slate-900">Intervenciones</h3>
         <p className="text-sm text-slate-500">Gestión de acciones preventivas y correctivas. Usa los botones para avanzar el estado de cada intervención.</p>
+        {actionError && (
+          <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-lg">
+            {actionError}
+          </p>
+        )}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {renderColumn('Pendientes', pending, 'bg-amber-400')}

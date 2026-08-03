@@ -71,7 +71,7 @@ export async function buildMLFeatures(studentId: number): Promise<MLFeatures> {
 
   const gpa = latestRecord?.gpa ?? 0;
   const failedSubjectsCount = latestRecord?.failedSubjects ?? 0;
-  const attendanceRate = latestRecord?.attendanceRate ?? 100;
+  const attendanceRate = latestRecord?.attendanceRate ?? 1.0;
   const lmsActivityScore = latestRecord?.lmsScore ?? 0;
 
   const [paymentDelayDays, creditsRatio] = await Promise.all([

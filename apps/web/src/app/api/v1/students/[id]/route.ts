@@ -3,13 +3,16 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const student = await prisma.student.findUnique({
-      where: { id: parseInt(params.id) },
+      where: { id: parseInt(id) },
       include: {
-        career: true,
+        career: {
+          include: { faculty: true }
+        },
         academicRecords: {
           orderBy: { createdAt: 'desc' },
           take: 1
@@ -26,6 +29,17 @@ export async function GET(
         },
         interventions: {
           orderBy: { createdAt: 'desc' }
+        },
+        payments: {
+          orderBy: { createdAt: 'desc' },
+          take: 5
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
         }
       }
     });

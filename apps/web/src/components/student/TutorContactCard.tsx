@@ -3,53 +3,77 @@
 import React, { useState } from 'react';
 import { Mail, Calendar, BookOpen, ChevronRight, Star, CheckCircle, Loader2 } from 'lucide-react';
 
-export function TutorContactCard() {
+interface TutorInfo {
+  name: string;
+  email: string;
+}
+
+export function TutorContactCard({ tutor, studentId }: { tutor: TutorInfo | null; studentId: number }) {
   const [requesting, setRequesting] = useState(false);
   const [requested, setRequested] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleRequest = async () => {
     setRequesting(true);
-    // Simular envío al backend
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    setRequesting(false);
-    setRequested(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch('/api/v1/interventions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId,
+          title: 'Solicitud de Tutoría',
+          notes: 'Solicitud enviada desde el portal del estudiante.',
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error?.message || result.error || 'Error al enviar la solicitud');
+      }
+      setRequested(true);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error al enviar la solicitud');
+    } finally {
+      setRequesting(false);
+    }
   };
+
+  const displayName = tutor?.name || 'Tutor asignado';
+  const displayEmail = tutor?.email || 'pendiente de asignación';
+  const initials = displayName
+    .split(' ')
+    .map((p) => p.charAt(0))
+    .slice(0, 2)
+    .join('')
+    .toUpperCase() || 'T';
 
   return (
     <div className="bg-gradient-to-br from-blue-50 to-blue-50/50 p-6 rounded-2xl border border-blue-200 relative overflow-hidden h-full flex flex-col">
       <div className="absolute -right-8 -top-8 w-32 h-32 bg-blue-500 rounded-full opacity-10 blur-2xl pointer-events-none"></div>
-      
+
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm border border-blue-100 overflow-hidden shrink-0 text-blue-600 font-bold text-xl">
-            ER
+            {initials}
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-slate-900">Dra. Elena Ramírez</h3>
-            <p className="text-sm text-blue-600 font-medium">Asesora Académica Principal</p>
+            <h3 className="text-lg font-semibold text-slate-900">{displayName}</h3>
+            <p className="text-sm text-blue-600 font-medium">Asesor Académico</p>
           </div>
         </div>
-        <div className="bg-white px-2 py-1 rounded-md shadow-sm border border-slate-200 flex items-center gap-1 shrink-0">
-          <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-          <span className="text-sm font-bold text-slate-700">4.9</span>
-        </div>
       </div>
-      
+
       <div className="space-y-3 mb-6 flex-1">
         <div className="flex items-center gap-3 text-sm text-slate-600">
           <BookOpen className="w-4 h-4 text-blue-500 shrink-0" />
-          <span>Especialista en Ciencias Exactas</span>
-        </div>
-        <div className="flex items-center gap-3 text-sm text-slate-600">
-          <Calendar className="w-4 h-4 text-blue-500 shrink-0" />
-          <span>Disponible Lun - Jue, 14:00 - 18:00</span>
+          <span>Acompañamiento académico y seguimiento</span>
         </div>
         <div className="flex items-center gap-3 text-sm text-slate-600">
           <Mail className="w-4 h-4 text-blue-500 shrink-0" />
-          <span>elena.ramirez@uide.edu.ec</span>
+          <span>{displayEmail}</span>
         </div>
       </div>
-      
+
       <button
         onClick={handleRequest}
         disabled={requesting || requested}
@@ -71,7 +95,10 @@ export function TutorContactCard() {
       </button>
 
       {requested && (
-        <p className="text-xs text-center text-green-700 mt-2">Tu tutora recibirá la notificación y te contactará pronto.</p>
+        <p className="text-xs text-center text-green-700 mt-2">Tu tutor recibirá la notificación y te contactará pronto.</p>
+      )}
+      {errorMsg && (
+        <p className="text-xs text-center text-red-600 mt-2">{errorMsg}</p>
       )}
     </div>
   );

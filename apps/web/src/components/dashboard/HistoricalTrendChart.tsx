@@ -28,7 +28,9 @@ export function HistoricalTrendChart() {
   // Formatear fecha para el eje X
   const chartData = data.map(item => ({
     ...item,
-    formattedDate: new Date(item.date).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })
+    formattedDate: item.date
+      ? new Date(item.date).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })
+      : item.semester || '—'
   }));
 
   return (

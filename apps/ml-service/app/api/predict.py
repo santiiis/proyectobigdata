@@ -36,8 +36,18 @@ async def predict_risk(request: MLPredictRequest):
     model = get_model()
     
     if model is None:
-        # Fallback to dummy if no model is trained yet
-        score = 0.842
+        # Fallback heurístico si no hay modelo entrenado: el riesgo se deriva
+        # de las características reales del estudiante en vez de un valor fijo.
+        gpa = max(0.0, min(float(request.features.gpa or 0), 10.0))
+        failed = max(0, int(request.features.failedSubjectsCount or 0))
+        attendance = max(0.0, min(float(request.features.attendanceRate or 0), 1.0))
+        lms = max(0.0, min(float(request.features.lmsActivityScore or 0), 1.0))
+        base = 0.05
+        base += (1 - gpa / 10.0) * 0.35
+        base += min(failed, 5) * 0.08
+        base += (1 - attendance) * 0.40
+        base += (1 - lms) * 0.12
+        score = round(min(base, 0.95), 4)
     else:
         # The model was trained on ['gpa', 'failedSubjects', 'attendanceRate', 'lmsScore']
         X_df = pd.DataFrame([{

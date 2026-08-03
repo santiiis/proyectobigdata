@@ -2,38 +2,27 @@
 
 import React from 'react';
 import { CheckCircle, Clock, BookOpen, Calendar, User } from 'lucide-react';
+import useSWR from 'swr';
 
-export function CommitmentHistory() {
-  const commitments = [
-    { 
-      date: '15 Oct 2024', 
-      type: 'Tutoría Académica', 
-      tutor: 'Dra. Elena Ramírez', 
-      status: 'Completado', 
-      notes: 'Refuerzo en Cálculo Integral. Compromiso: resolver ejercicios del cap. 5 antes del viernes.'
-    },
-    { 
-      date: '8 Oct 2024', 
-      type: 'Entrevista de Seguimiento', 
-      tutor: 'Dra. Elena Ramírez', 
-      status: 'Completado', 
-      notes: 'Revisión del plan de estudios. Se ajustó la carga horaria para el próximo ciclo.'
-    },
-    { 
-      date: '25 Sep 2024', 
-      type: 'Apoyo Psicopedagógico', 
-      tutor: 'Lic. Marco Vega', 
-      status: 'Completado', 
-      notes: 'Sesión de orientación vocacional. Se confirmó motivación por la carrera.'
-    },
-    { 
-      date: '10 Sep 2024', 
-      type: 'Tutoría Académica', 
-      tutor: 'Dra. Elena Ramírez', 
-      status: 'En Progreso', 
-      notes: 'Plan de recuperación de Física II. Pendiente: entregar trabajo práctico.'
-    }
-  ];
+const fetcher = (url: string) => fetch(url).then(res => res.json()).then(res => res.data);
+
+const statusMap: Record<string, { label: string; done: boolean }> = {
+  RESOLVED: { label: 'Completado', done: true },
+  CLOSED: { label: 'Completado', done: true },
+  IN_PROGRESS: { label: 'En Progreso', done: false },
+  PENDING: { label: 'Pendiente', done: false },
+};
+
+export function CommitmentHistory({ studentId }: { studentId: number }) {
+  const { data, error } = useSWR(`/api/v1/students/${studentId}/interventions`, fetcher);
+
+  const commitments = (data || []).map((inv: any) => ({
+    date: inv.createdAt,
+    type: inv.title,
+    tutor: inv.assignedTo,
+    status: inv.status,
+    notes: inv.notes,
+  }));
 
   return (
     <section className="space-y-6">
@@ -43,50 +32,61 @@ export function CommitmentHistory() {
       </div>
 
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 sm:p-8">
-        <div className="relative border-l-2 border-slate-100 ml-4 space-y-8">
-          {commitments.map((commitment, index) => {
-            return (
-              <div key={index} className="relative pl-8">
-                <div className="absolute -left-[17px] bg-white p-1 rounded-full border border-slate-200">
-                  <div className="bg-slate-50 text-slate-600 rounded-full p-1.5">
-                    <BookOpen size={16} />
-                  </div>
-                </div>
-                
-                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200">
-                        <Calendar size={14} />
-                        {commitment.date}
-                      </span>
-                      <span className="font-semibold text-slate-900">{commitment.type}</span>
-                    </div>
-                    <div>
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                        commitment.status === 'Completado' 
-                          ? 'bg-green-50 text-green-700 border border-green-200' 
-                          : 'bg-amber-50 text-amber-700 border border-amber-200'
-                      }`}>
-                        {commitment.status === 'Completado' ? <CheckCircle size={14} /> : <Clock size={14} />}
-                        {commitment.status}
-                      </span>
+        {error ? (
+          <div className="text-center py-8 text-red-500">Error cargando tus intervenciones.</div>
+        ) : !data ? (
+          <div className="text-center py-8 text-slate-400">Cargando...</div>
+        ) : commitments.length === 0 ? (
+          <div className="text-center py-8 text-slate-400">
+            Aún no tienes tutorías registradas. Solicita una desde el panel del tutor.
+          </div>
+        ) : (
+          <div className="relative border-l-2 border-slate-100 ml-4 space-y-8">
+            {commitments.map((commitment: any, index: number) => {
+              const st = statusMap[commitment.status] || { label: commitment.status, done: false };
+              return (
+                <div key={index} className="relative pl-8">
+                  <div className="absolute -left-[17px] bg-white p-1 rounded-full border border-slate-200">
+                    <div className="bg-slate-50 text-slate-600 rounded-full p-1.5">
+                      <BookOpen size={16} />
                     </div>
                   </div>
-                  
-                  <div className="flex items-center gap-2 text-sm text-slate-500">
-                    <User size={14} />
-                    <span><span className="font-medium text-slate-700">Tutor:</span> {commitment.tutor}</span>
+
+                  <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200">
+                          <Calendar size={14} />
+                          {new Date(commitment.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                        <span className="font-semibold text-slate-900">{commitment.type}</span>
+                      </div>
+                      <div>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                          st.done
+                            ? 'bg-green-50 text-green-700 border border-green-200'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        }`}>
+                          {st.done ? <CheckCircle size={14} /> : <Clock size={14} />}
+                          {st.label}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                      <User size={14} />
+                      <span><span className="font-medium text-slate-700">Tutor:</span> {commitment.tutor || 'Sin asignar'}</span>
+                    </div>
+
+                    <p className="text-slate-600 text-sm bg-slate-50 p-3 rounded-lg border border-slate-100">
+                      {commitment.notes || 'Sin observaciones.'}
+                    </p>
                   </div>
-                  
-                  <p className="text-slate-600 text-sm bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    {commitment.notes}
-                  </p>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </section>
   );

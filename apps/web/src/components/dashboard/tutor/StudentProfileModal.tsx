@@ -102,8 +102,8 @@ export default function StudentProfileModal({ student, isOpen, onClose }: Studen
                   <div className="flex flex-col items-center justify-center">
                     <span className="text-4xl font-bold text-slate-900">
                       {detailData.academicRecords?.[0]?.attendanceRate !== undefined 
-                        ? (detailData.academicRecords[0].attendanceRate * 100).toFixed(1) 
-                        : 100}%
+                        ? (detailData.academicRecords[0].attendanceRate * 100).toFixed(1) + '%'
+                        : '—'}
                     </span>
                     <span className="text-sm text-slate-500 mt-2">Porcentaje de clases asistidas</span>
                   </div>
@@ -163,9 +163,7 @@ export default function StudentProfileModal({ student, isOpen, onClose }: Studen
                         </div>
                         <div>
                           <h4 className="text-sm font-semibold text-slate-900">
-                            {intervention.type === 'CALL' ? 'Llamada Telefónica' : 
-                             intervention.type === 'EMAIL' ? 'Correo Electrónico' :
-                             intervention.type === 'MEETING' ? 'Reunión Presencial' : intervention.type}
+                            {intervention.title || 'Intervención'}
                           </h4>
                           <p className="text-sm text-slate-500 mt-1">{intervention.notes || 'Sin notas.'}</p>
                           <span className={`inline-block mt-2 text-xs font-medium px-2 py-0.5 rounded border ${

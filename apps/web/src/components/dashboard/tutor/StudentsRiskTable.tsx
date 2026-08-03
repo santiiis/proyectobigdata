@@ -29,7 +29,7 @@ const riskStyles: Record<RiskLevel, { badge: string; icon: React.ReactNode }> = 
   LOW: { badge: 'bg-green-100 text-green-600 border-green-200', icon: <CheckCircle className="w-4 h-4 mr-1 text-green-600" /> },
 };
 
-function DropdownMenu({ studentName, onClose, onOpenProfile }: { studentName: string; onClose: () => void; onOpenProfile: () => void }) {
+function DropdownMenu({ studentId, onClose, onOpenProfile }: { studentId: string; onClose: () => void; onOpenProfile: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,19 +41,20 @@ function DropdownMenu({ studentName, onClose, onOpenProfile }: { studentName: st
   }, [onClose]);
 
   return (
-    <div ref={ref} className="absolute right-0 top-8 z-20 w-48 bg-white border border-slate-200 rounded-lg shadow-lg py-1">
+    <div ref={ref} className="absolute right-0 top-8 z-20 w-56 bg-white border border-slate-200 rounded-lg shadow-lg py-1">
       <button
         onClick={() => { onOpenProfile(); onClose(); }}
         className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
       >
         <Eye className="w-4 h-4 text-slate-400" /> Ver Perfil Completo
       </button>
-      <button
-        onClick={() => { alert(`Historial de ${studentName}\n\nPredicciones anteriores:\n• Ciclo 2024A: 45% riesgo\n• Ciclo 2024B: 72% riesgo\n• Ciclo actual: ${studentName === 'Laura Martínez' ? '85%' : '65%'} riesgo`); onClose(); }}
+      <a
+        href={`/students/${studentId}`}
+        onClick={onClose}
         className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
       >
         <History className="w-4 h-4 text-slate-400" /> Historial de Predicciones
-      </button>
+      </a>
     </div>
   );
 }
@@ -71,17 +72,23 @@ export default function StudentsRiskTable() {
         const parsed = typeof activePrediction.topRiskFactors === 'string' 
           ? JSON.parse(activePrediction.topRiskFactors) 
           : activePrediction.topRiskFactors;
-        factors = Object.keys(parsed).slice(0, 2);
+        factors = Array.isArray(parsed)
+          ? parsed.slice(0, 2)
+          : Object.keys(parsed).slice(0, 2);
       } catch (e) {
         factors = ['Datos ML'];
       }
     }
 
+    const latestRecord = s.academicRecords?.[0];
+
     return {
       id: s.id.toString(),
       name: `${s.firstName} ${s.lastName}`,
       career: s.career?.name || 'Sin Carrera',
-      lastAttendance: s.academicRecords?.[0] ? `GPA: ${s.academicRecords[0].gpa}` : "Ver historial",
+      lastAttendance: latestRecord?.attendanceRate !== undefined
+        ? `${Math.round(latestRecord.attendanceRate * 100)}% asistencia`
+        : "Ver historial",
       riskScore: activePrediction?.score ? Math.round(activePrediction.score * 100) : 0,
       riskLevel: activePrediction?.riskLevel || 'LOW',
       riskFactors: factors,
@@ -208,7 +215,7 @@ export default function StudentsRiskTable() {
                   <div className="flex items-center">Carrera {renderSortIcon('career')}</div>
                 </th>
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Última Asistencia
+                  Asistencia
                 </th>
                 <th onClick={() => handleSort('riskScore')} className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider hover:bg-slate-200 cursor-pointer transition-colors">
                   <div className="flex items-center">Riesgo {renderSortIcon('riskScore')}</div>
@@ -265,7 +272,7 @@ export default function StudentsRiskTable() {
                         </button>
                         {openMenuId === student.id && (
                           <DropdownMenu 
-                            studentName={student.name} 
+                            studentId={student.id}
                             onClose={() => setOpenMenuId(null)} 
                             onOpenProfile={() => handleOpenProfileModal(student)}
                           />

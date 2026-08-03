@@ -9,23 +9,31 @@ const fetcher = (url: string) => fetch(url).then(res => res.json()).then(res => 
 export default function MLPipelineMonitor() {
   const [triggering, setTriggering] = useState(false);
   const [localLogs, setLocalLogs] = useState<string[]>([]);
+  const [semesterCode, setSemesterCode] = useState<string>("");
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   // Poll for the latest job every 3 seconds
   const { data: latestJob } = useSWR("/api/v1/admin/batch-jobs/latest", fetcher, { refreshInterval: 3000 });
 
+  const { data: semesters } = useSWR("/api/v1/admin/semesters", fetcher);
+  const availableSemesters = semesters || [];
+
   const isRunning = latestJob?.status === "PROCESSING" || triggering;
 
   const handleTrigger = async () => {
     if (isRunning) return;
+    if (!semesterCode) {
+      setLocalLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Error: selecciona un semestre para la corrida`]);
+      return;
+    }
     setTriggering(true);
-    setLocalLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Iniciando corrida batch...`]);
+    setLocalLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Iniciando corrida batch para ${semesterCode}...`]);
     
     try {
       const res = await fetch("/api/v1/predictions/batch-run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ semesterCode: "2026-A", forceRetrain: false })
+        body: JSON.stringify({ semesterCode, forceRetrain: false })
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message || "Error desconocido");
@@ -64,27 +72,41 @@ export default function MLPipelineMonitor() {
           </h3>
           <p className="text-sm text-slate-500 mt-1">Ejecuta y monitorea trabajos de predicción batch manualmente</p>
         </div>
-        <button 
-          onClick={handleTrigger}
-          disabled={isRunning}
-          className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shadow-sm ${
-            isRunning 
-              ? "bg-slate-100 text-slate-500 cursor-not-allowed" 
-              : "bg-blue-600 hover:bg-blue-700 text-white"
-          }`}
-        >
-          {isRunning ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Procesando...
-            </>
-          ) : (
-            <>
-              <Play className="w-4 h-4" />
-              Ejecutar Corrida Batch
-            </>
-          )}
-        </button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <select
+            value={semesterCode}
+            onChange={e => setSemesterCode(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white text-slate-700 focus:outline-none focus:border-blue-500"
+          >
+            <option value="">Seleccionar semestre</option>
+            {availableSemesters.map((s: any) => (
+              <option key={s.id} value={s.code}>
+                {s.code} {s.isCurrent ? '(Actual)' : ''}
+              </option>
+            ))}
+          </select>
+          <button 
+            onClick={handleTrigger}
+            disabled={isRunning}
+            className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shadow-sm ${
+              isRunning 
+                ? "bg-slate-100 text-slate-500 cursor-not-allowed" 
+                : "bg-blue-600 hover:bg-blue-700 text-white"
+            }`}
+          >
+            {isRunning ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Procesando...
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4" />
+                Ejecutar Corrida Batch
+              </>
+            )}
+          </button>
+        </div>
       </div>
       
       <div className="flex-grow p-6 bg-slate-900 font-mono text-xs sm:text-sm text-slate-300 overflow-y-auto max-h-[300px]">

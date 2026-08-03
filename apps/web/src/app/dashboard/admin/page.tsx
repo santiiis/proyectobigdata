@@ -35,8 +35,12 @@ export default function AdminDashboardPage() {
           <p className="text-slate-500 mt-2 text-base">Gestión de pipelines de IA, estado del sistema e ingesta masiva de datos.</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="text-sm bg-blue-50 text-blue-700 px-4 py-2 rounded-full font-medium border border-blue-100">
-            Estado: Óptimo
+          <div className={`text-sm px-4 py-2 rounded-full font-medium border ${
+            kpis && kpis.activeJobs > 0
+              ? "bg-amber-50 text-amber-700 border-amber-200"
+              : "bg-blue-50 text-blue-700 border-blue-100"
+          }`}>
+            {kpis && kpis.activeJobs > 0 ? `Procesando (${kpis.activeJobs} trabajo${kpis.activeJobs > 1 ? 's' : ''} en ejecución)` : 'Estado: Óptimo'}
           </div>
         </div>
       </div>

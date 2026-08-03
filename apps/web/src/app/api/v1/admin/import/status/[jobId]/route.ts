@@ -5,10 +5,10 @@ import { AppError, errorResponse } from "@/lib/errors";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { jobId: string } }
+  { params }: { params: Promise<{ jobId: string }> }
 ) {
   try {
-    const { jobId } = params;
+    const { jobId } = await params;
 
     const job = await prisma.importJob.findUnique({
       where: { jobId }

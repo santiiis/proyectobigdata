@@ -14,24 +14,41 @@ interface CreateInterventionModalProps {
   onClose: () => void;
 }
 
+const titleMap: Record<string, string> = {
+  ACADEMIC: "Tutoría Académica de Refuerzo",
+  PSYCHOLOGICAL: "Apoyo Psicopedagógico",
+  FINANCIAL: "Orientación de Plan de Pagos",
+  FOLLOW_UP: "Entrevista de Seguimiento",
+};
+
 export default function CreateInterventionModal({ student, isOpen, onClose }: CreateInterventionModalProps) {
   const [type, setType] = useState('ACADEMIC');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMsg(null);
 
     try {
-      await fetch('/api/v1/interventions', {
+      const res = await fetch('/api/v1/interventions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId: student.id, type, notes }),
+        body: JSON.stringify({
+          studentId: parseInt(student.id, 10),
+          title: titleMap[type] || type,
+          notes,
+        }),
       });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error?.message || result.error || 'Error al crear la intervención');
+      }
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
@@ -39,8 +56,9 @@ export default function CreateInterventionModal({ student, isOpen, onClose }: Cr
         setType('ACADEMIC');
         onClose();
       }, 1500);
-    } catch (error) {
-      console.error('Error al crear intervención:', error);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error al crear la intervención');
+      console.error('Error al crear intervención:', err);
     } finally {
       setLoading(false);
     }
@@ -88,6 +106,11 @@ export default function CreateInterventionModal({ student, isOpen, onClose }: Cr
           </div>
 
           {/* Actions */}
+          {errorMsg && (
+            <div className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+              {errorMsg}
+            </div>
+          )}
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"

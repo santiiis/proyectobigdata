@@ -6,10 +6,11 @@ import { AppError, errorResponse } from "@/lib/errors";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const parsedParams = studentIdSchema.safeParse({ id: params.id });
+    const { id: studentIdParam } = await params;
+    const parsedParams = studentIdSchema.safeParse({ id: studentIdParam });
     if (!parsedParams.success) {
       throw new AppError("VALIDATION_ERROR", "ID de estudiante inválido", 400);
     }

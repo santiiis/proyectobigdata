@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import os from "os";
-import path from "path";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 
@@ -14,18 +11,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // Read the file from the request
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    // Generate a unique jobId
     const jobId = crypto.randomUUID();
-
-    // Save the file temporarily to the OS
-    const tempDir = os.tmpdir();
-    const extension = path.extname(file.name) || '.zip';
-    const tempFilePath = path.join(tempDir, `${jobId}${extension}`);
-    await fs.writeFile(tempFilePath, buffer);
 
     // Insert job into database so the monitor can track it
     await prisma.importJob.create({
@@ -38,23 +24,29 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    // Call the FastAPI backend
-    const backendUrl = "http://localhost:8000/api/v1/import/oulad";
+    // Forward the actual file bytes to the FastAPI backend (multipart)
+    const backendUrl = process.env.ML_SERVICE_URL || "http://localhost:8000/api/v1/import/oulad";
     const apiKey = process.env.ML_API_KEY || "ml-api-key-cambiar-en-produccion";
+
+    const body = new FormData();
+    body.append("file", file);
+    body.append("jobId", jobId);
 
     // Start background fetch (fire and forget)
     fetch(backendUrl, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         "x-worker-secret": apiKey,
       },
-      body: JSON.stringify({
-        jobId: jobId,
-        filePath: tempFilePath,
-      }),
-    }).catch((error) => {
+      body,
+    }).catch(async (error) => {
       console.error("Error calling backend:", error);
+      try {
+        await prisma.importJob.update({
+          where: { jobId },
+          data: { status: "FAILED", errorMessage: "No se pudo conectar con el servicio de ML." }
+        });
+      } catch (_) {}
     });
 
     // Return 202 Accepted with the jobId immediately

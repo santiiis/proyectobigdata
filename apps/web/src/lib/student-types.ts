@@ -8,16 +8,39 @@ export interface StudentProfile {
   status: "ACTIVE" | "INACTIVE" | "GRADUATED" | "DROPPED";
   career: {
     id: number;
+    code: string;
     name: string;
-    faculty: string;
+    faculty?: {
+      id: number;
+      code: string;
+      name: string;
+    } | null;
   };
-  academicSummary: {
+  academicRecords?: {
+    id: number;
+    period: string;
+    gpa: number;
+    failedSubjects: number;
+    attendanceRate: number;
+    createdAt: string;
+  }[];
+  predictions?: {
+    id: number;
+    score: number;
+    riskLevel: "LOW" | "MEDIUM" | "HIGH";
+    topRiskFactors: any;
+    modelVersion: string;
+    createdAt: string;
+  }[];
+  enrollments?: any[];
+  interventions?: any[];
+  academicSummary?: {
     gpa: number;
     failedSubjectsCount: number;
     attendanceRate: number;
     lmsActivityScore: number;
   };
-  activePrediction: {
+  activePrediction?: {
     id: number;
     score: number;
     riskLevel: "LOW" | "MEDIUM" | "HIGH";
