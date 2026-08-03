@@ -151,20 +151,6 @@ export default function MLPipelineMonitor() {
         </div>
       </div>
 
-      {/* Cancel Modal */}
-      <ConfirmModal
-        isOpen={showCancelModal}
-        title="Cancelar Proceso"
-        message="¿Estás seguro de que deseas cancelar este proceso de predicción? El job se marcará como fallido y no se podrán recuperar los resultados parciales."
-        confirmText="Sí, cancelar"
-        cancelText="No, continuar"
-        onConfirm={handleCancel}
-        onCancel={() => setShowCancelModal(false)}
-        loading={cancelling}
-      />
-        </div>
-      </div>
-      
       <div className="flex-grow p-6 bg-slate-900 font-mono text-xs sm:text-sm text-slate-300 overflow-y-auto max-h-[300px]">
         {displayLogs.map((log, i) => (
           <div key={i} className={`py-1 ${log.includes("ÉXITO") ? "text-green-400" : log.includes("Error") || log.includes("ERROR") ? "text-red-400" : ""}`}>
@@ -188,6 +174,18 @@ export default function MLPipelineMonitor() {
         </div>
         <div>Último ID: {latestJob?.jobId || "Ninguno"}</div>
       </div>
+
+      {/* Cancel Modal */}
+      <ConfirmModal
+        isOpen={showCancelModal}
+        title="Cancelar Proceso"
+        message="¿Estás seguro de que deseas cancelar este proceso de predicción? El job se marcará como fallido y no se podrán recuperar los resultados parciales."
+        confirmText="Sí, cancelar"
+        cancelText="No, continuar"
+        onConfirm={handleCancel}
+        onCancel={() => setShowCancelModal(false)}
+        loading={cancelling}
+      />
     </div>
   );
 }
