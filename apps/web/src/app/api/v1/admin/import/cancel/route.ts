@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
           errorMessage: "Cancelado por el usuario."
         }
       });
+      return NextResponse.json({ success: true, message: "Import job cancelled" });
     }
 
     // Try to cancel as batch job
@@ -38,20 +39,10 @@ export async function POST(req: NextRequest) {
           errorMessage: "Cancelado por el usuario."
         }
       });
+      return NextResponse.json({ success: true, message: "Batch job cancelled" });
     }
 
-    // Also cancel any other processing batch jobs
-    await prisma.batchJob.updateMany({
-      where: {
-        status: "PROCESSING"
-      },
-      data: {
-        status: "FAILED",
-        errorMessage: "Cancelado por el usuario."
-      }
-    });
-
-    return NextResponse.json({ success: true, message: "Job(s) cancelled" });
+    return NextResponse.json({ error: "Job not found or not in PROCESSING status" }, { status: 404 });
   } catch (error: any) {
     console.error("Cancel error:", error);
     return NextResponse.json(

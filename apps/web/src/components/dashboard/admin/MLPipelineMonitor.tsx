@@ -15,8 +15,15 @@ export default function MLPipelineMonitor() {
   const [semesterCode, setSemesterCode] = useState<string>("");
   const logsEndRef = useRef<HTMLDivElement>(null);
 
-  // Poll for the latest job every 3 seconds
-  const { data: latestJob, mutate: mutateLatestJob } = useSWR("/api/v1/admin/batch-jobs/latest", fetcher, { refreshInterval: 3000 });
+  // Poll for the latest job every 5 seconds
+  const { data: latestJob, mutate: mutateLatestJob } = useSWR("/api/v1/admin/batch-jobs/latest", fetcher, { 
+    refreshInterval: 5000,
+    revalidateOnFocus: true,
+    onErrorRetry: (error, key, config, revalidate, { retryCount }) => {
+      if (retryCount >= 3) return;
+      setTimeout(() => revalidate({ retryCount }), 5000);
+    }
+  });
 
   const { data: semesters } = useSWR("/api/v1/admin/semesters", fetcher);
   const availableSemesters = semesters || [];
