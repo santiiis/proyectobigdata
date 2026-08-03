@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { Activity, Target, Crosshair, BarChart2, History, Loader2, TrendingUp, RefreshCw } from "lucide-react";
+import React, { useState } from "react";
+import { Activity, Target, Crosshair, BarChart2, History, Loader2, TrendingUp, RefreshCw, StopCircle } from "lucide-react";
 import useSWR from "swr";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json()).then(res => res.data);
@@ -13,17 +13,45 @@ const statusLabel: Record<string, string> = {
 };
 
 export default function ModelHealthPanel() {
-  const { data: kpis } = useSWR('/api/v1/admin/kpis', fetcher, { refreshInterval: 5000 });
+  const { data: kpis, mutate: mutateKpis } = useSWR('/api/v1/admin/kpis', fetcher, { refreshInterval: 5000 });
   const { data: latestJob } = useSWR('/api/v1/admin/batch-jobs/latest', fetcher, { refreshInterval: 5000 });
-  const { data: importJobs } = useSWR('/api/v1/admin/import/jobs?limit=5', fetcher, { refreshInterval: 5000 });
+  const { data: importJobs, mutate: mutateImportJobs } = useSWR('/api/v1/admin/import/jobs?limit=5', fetcher, { refreshInterval: 5000 });
   const { data: mlMetrics } = useSWR('/api/v1/admin/ml-metrics', fetcher, { refreshInterval: 10000 });
+  const [cancelling, setCancelling] = useState<string | null>(null);
+
+  const handleCancel = async (jobId: string) => {
+    if (!confirm("¿Estás seguro de cancelar este proceso?")) return;
+    
+    setCancelling(jobId);
+    try {
+      const res = await fetch("/api/v1/admin/import/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId }),
+      });
+      
+      if (res.ok) {
+        mutateImportJobs();
+        mutateKpis();
+        alert("Proceso cancelado exitosamente.");
+      } else {
+        alert("Error al cancelar el proceso.");
+      }
+    } catch (err) {
+      alert("Error de conexión al cancelar.");
+    } finally {
+      setCancelling(null);
+    }
+  };
 
   const history = (importJobs || []).map((job: any) => ({
     id: job.id,
+    jobId: job.jobId,
     date: new Date(job.createdAt).toISOString().slice(0, 10),
     version: job.jobId,
     size: job.totalRecords ?? 0,
     status: statusLabel[job.status] || job.status,
+    rawStatus: job.status,
     notes: job.errorMessage || (job.processed > 0 ? `${job.processed} registros procesados` : "Importación masiva"),
   }));
 
@@ -126,6 +154,7 @@ export default function ModelHealthPanel() {
                   <th className="pb-3 font-medium">Registros</th>
                   <th className="pb-3 font-medium">Estado</th>
                   <th className="pb-3 font-medium">Detalle</th>
+                  <th className="pb-3 font-medium">Acciones</th>
                 </tr>
               </thead>
               <tbody className="text-slate-900">
@@ -144,6 +173,22 @@ export default function ModelHealthPanel() {
                       </span>
                     </td>
                     <td className="py-3 text-slate-500">{row.notes}</td>
+                    <td className="py-3">
+                      {row.rawStatus === 'PROCESSING' && (
+                        <button
+                          onClick={() => handleCancel(row.jobId)}
+                          disabled={cancelling === row.jobId}
+                          className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          {cancelling === row.jobId ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <StopCircle className="w-3 h-3" />
+                          )}
+                          Cancelar
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
