@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Mail, Calendar, BookOpen, ChevronRight, Star, CheckCircle, Loader2 } from 'lucide-react';
+import { Mail, BookOpen, ChevronRight, CheckCircle, Loader2 } from 'lucide-react';
+import useSWR from 'swr';
 
 interface TutorInfo {
   name: string;
@@ -12,6 +13,9 @@ export function TutorContactCard({ tutor, studentId }: { tutor: TutorInfo | null
   const [requesting, setRequesting] = useState(false);
   const [requested, setRequested] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const { mutate: mutateStudent } = useSWR('/api/v1/student/me');
+  const { mutate: mutateInterventions } = useSWR(`/api/v1/students/${studentId}/interventions`);
 
   const handleRequest = async () => {
     setRequesting(true);
@@ -31,6 +35,10 @@ export function TutorContactCard({ tutor, studentId }: { tutor: TutorInfo | null
         throw new Error(result.error?.message || result.error || 'Error al enviar la solicitud');
       }
       setRequested(true);
+
+      // Invalidate caches for real-time updates
+      mutateStudent();
+      mutateInterventions();
     } catch (err: any) {
       setErrorMsg(err.message || 'Error al enviar la solicitud');
     } finally {

@@ -7,6 +7,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 from sqlalchemy import create_engine, text
 from app.core.config import settings
+from starlette.concurrency import run_in_threadpool
 
 router = APIRouter()
 
@@ -14,18 +15,29 @@ def process_oulad_import(job_id: str, file_path: str):
     """
     Background worker that unzips/reads parquet, transforms, and bulk inserts to MySQL.
     """
+    print(f"[IMPORT] Starting import for job {job_id}, file: {file_path}")
     engine = create_engine(settings.DATABASE_URL)
     
-    def update_job_status(status: str, processed: int = 0, error: str = None):
+    def update_job_status(status: str, processed: int = 0, error: str = None, total_records: int = None):
         with engine.begin() as conn:
-            conn.execute(
-                text("""
-                UPDATE import_jobs 
-                SET status = :status, processed = :processed, errorMessage = :error, updatedAt = NOW()
-                WHERE jobId = :job_id
-                """),
-                {"status": status, "processed": processed, "error": error, "job_id": job_id}
-            )
+            if total_records is not None:
+                conn.execute(
+                    text("""
+                    UPDATE import_jobs 
+                    SET status = :status, processed = :processed, totalRecords = :total_records, errorMessage = :error, updatedAt = NOW()
+                    WHERE jobId = :job_id
+                    """),
+                    {"status": status, "processed": processed, "total_records": total_records, "error": error, "job_id": job_id}
+                )
+            else:
+                conn.execute(
+                    text("""
+                    UPDATE import_jobs 
+                    SET status = :status, processed = :processed, errorMessage = :error, updatedAt = NOW()
+                    WHERE jobId = :job_id
+                    """),
+                    {"status": status, "processed": processed, "error": error, "job_id": job_id}
+                )
 
     try:
         if not os.path.exists(file_path):
@@ -55,11 +67,13 @@ def process_oulad_import(job_id: str, file_path: str):
         if not parquet_files:
             raise Exception("No se encontraron archivos .parquet en el paquete subido.")
 
+        print(f"[IMPORT] Found {len(parquet_files)} parquet files")
         # Read Parquet files using PyArrow dataset (directory/partition aware)
         update_job_status("PROCESSING", processed=0)
         df = pq.ParquetDataset(parquet_files).read().to_pandas()
         
         total_rows = len(df)
+        print(f"[IMPORT] Read {total_rows} rows, columns: {list(df.columns)}")
         if total_rows == 0:
             raise Exception("El dataset Parquet está vacío.")
 
@@ -93,6 +107,9 @@ def process_oulad_import(job_id: str, file_path: str):
         
         if not new_students.empty:
             new_students.to_sql('students', con=engine, if_exists='append', index=False)
+            print(f"[IMPORT] Inserted {len(new_students)} new students")
+        else:
+            print(f"[IMPORT] No new students to insert (all exist)")
             
         # Re-fetch to get all valid IDs
         with engine.begin() as conn:
@@ -111,7 +128,7 @@ def process_oulad_import(job_id: str, file_path: str):
             'gpa': 7.0, # Default GPA
             'failedSubjects': 0,
             'attendanceRate': 0.85,
-            'lmsScore': 0.0
+            'lmsScore': 0.0,
         })
         
         # Map final_result if exists
@@ -127,13 +144,18 @@ def process_oulad_import(job_id: str, file_path: str):
                 records_to_insert['lmsScore'] = valid_records['studied_credits'].fillna(0).astype(float)
 
         # Insert records
-        update_job_status("PROCESSING", processed=int(total_rows * 0.5))
+        update_job_status("PROCESSING", processed=int(total_rows * 0.5), total_records=total_rows)
         records_to_insert.to_sql('academic_records', con=engine, if_exists='append', index=False)
+        print(f"[IMPORT] Inserted {len(records_to_insert)} academic records")
         
         # Update success
-        update_job_status("COMPLETED", processed=total_rows)
+        update_job_status("COMPLETED", processed=total_rows, total_records=total_rows)
+        print(f"[IMPORT] Job {job_id} completed successfully with {total_rows} rows")
 
     except Exception as e:
+        print(f"[IMPORT] ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
         update_job_status("FAILED", error=str(e))
     finally:
         # Cleanup temp file and extracted folder
@@ -163,6 +185,7 @@ async def import_oulad_data(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     jobId: str = Form(...),
+    x_internal_api_key: str = Header(None),
     x_worker_secret: str = Header(None)
 ):
     """
@@ -170,8 +193,9 @@ async def import_oulad_data(
     Recibe el archivo (.zip o .parquet) directamente vía multipart/form-data
     para que funcione tanto local como dentro de Docker.
     """
-    if x_worker_secret != settings.ML_API_KEY:
-        raise HTTPException(status_code=403, detail="Invalid worker secret")
+    api_key = x_internal_api_key or x_worker_secret
+    if api_key != settings.ML_API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid API key")
 
     # Persistir el archivo en un directorio temporal del ML service
     temp_dir = tempfile.mkdtemp(prefix="oulad_import_")
@@ -180,6 +204,34 @@ async def import_oulad_data(
     with open(file_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    background_tasks.add_task(process_oulad_import, jobId, file_path)
+    background_tasks.add_task(_run_import_sync, jobId, file_path)
 
     return {"status": "accepted", "jobId": jobId}
+
+
+def _run_import_sync(job_id: str, file_path: str):
+    """Wrapper to run import in a thread pool so it doesn't get cancelled."""
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # We're inside an async context, run in thread
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                pool.submit(process_oulad_import, job_id, file_path).result()
+        else:
+            loop.run_until_complete(run_in_threadpool(process_oulad_import, job_id, file_path))
+    except Exception as e:
+        print(f"[IMPORT] Fatal error in _run_import_sync: {e}")
+        import traceback
+        traceback.print_exc()
+        # Try to mark as failed
+        try:
+            engine = create_engine(settings.DATABASE_URL)
+            with engine.begin() as conn:
+                conn.execute(
+                    text("UPDATE import_jobs SET status = 'FAILED', errorMessage = :error, updatedAt = NOW() WHERE jobId = :job_id"),
+                    {"error": str(e), "job_id": job_id}
+                )
+        except:
+            pass

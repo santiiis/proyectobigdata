@@ -60,7 +60,10 @@ function DropdownMenu({ studentId, onClose, onOpenProfile }: { studentId: string
 }
 
 export default function StudentsRiskTable() {
-  const { data: responseData, error } = useSWR('/api/v1/students?limit=50', fetcher);
+  const { data: responseData, error } = useSWR('/api/v1/students?limit=50', fetcher, {
+    refreshInterval: 10000,
+    revalidateOnFocus: true,
+  });
   
   const rawStudents = responseData || [];
   const dbStudents: Student[] = rawStudents.map((s: any) => {

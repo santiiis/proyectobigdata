@@ -98,6 +98,17 @@ export async function runBatchInference(jobId: string, forceRetrain: boolean) {
       },
     });
 
+    // Audit log
+    try {
+      await prisma.auditLog.create({
+        data: {
+          action: "BATCH_RUN_COMPLETE",
+          entity: "BatchJob",
+          details: { jobId, totalStudents: processedCount },
+        },
+      });
+    } catch (_) {}
+
   } catch (error) {
     console.error("Batch Job Fatal Error:", error);
     // Intentar marcar como FAILED si hubo un error global

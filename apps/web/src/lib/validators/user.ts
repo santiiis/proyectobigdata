@@ -10,11 +10,11 @@ export const createUserSchema = z.object({
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres."),
   email: z.string().email("Correo electrónico inválido."),
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
-  role: z.enum(["ADMIN", "DIRECTOR", "TUTOR"]),
+  role: z.enum(["ADMIN", "DIRECTOR", "TUTOR", "STUDENT"]),
 });
 
 export const updateUserSchema = z.object({
-  role: z.enum(["ADMIN", "DIRECTOR", "TUTOR"]).optional(),
+  role: z.enum(["ADMIN", "DIRECTOR", "TUTOR", "STUDENT"]).optional(),
   isActive: z.boolean().optional(),
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres.").optional(),
 });

@@ -27,28 +27,34 @@ function convertToCSV(data: any[]): string {
 }
 
 export async function generateReport(query: ReportExportInput): Promise<{ csvString: string; filename: string }> {
-  let data: any[] = [];
-  let filename = `report_${query.type.toLowerCase()}_${new Date().getTime()}.csv`;
-
-  switch (query.type) {
-    case "FACULTY":
-      data = await generateFacultyReport();
-      break;
-    case "CAREER":
-      data = await generateCareerReport(query.careerId);
-      break;
-    case "PERIOD":
-      data = await generatePeriodReport(query.semesterCode);
-      break;
-    case "AUDIT":
-      data = await generateAuditReport();
-      break;
-  }
+  const data = await generateReportDataInternal(query);
+  const filename = `report_${query.type.toLowerCase()}_${new Date().getTime()}.csv`;
 
   return {
     csvString: convertToCSV(data),
     filename,
   };
+}
+
+export async function generateReportData(query: ReportExportInput): Promise<{ data: any[]; filename: string }> {
+  const data = await generateReportDataInternal(query);
+  const filename = `report_${query.type.toLowerCase()}_${new Date().getTime()}.csv`;
+  return { data, filename };
+}
+
+async function generateReportDataInternal(query: ReportExportInput): Promise<any[]> {
+  switch (query.type) {
+    case "FACULTY":
+      return generateFacultyReport();
+    case "CAREER":
+      return generateCareerReport(query.careerId);
+    case "PERIOD":
+      return generatePeriodReport(query.semesterCode);
+    case "AUDIT":
+      return generateAuditReport();
+    default:
+      return [];
+  }
 }
 
 async function generateFacultyReport() {

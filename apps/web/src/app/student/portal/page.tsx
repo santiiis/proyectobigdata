@@ -12,7 +12,10 @@ const fetcher = (url: string) => fetch(url).then(res => res.json()).then(res => 
 export default function StudentPortalPage() {
   // El portal usa el estudiante vinculado a la sesión; por ahora se carga el
   // primer estudiante activo como perfil de demostración.
-  const { data: student, error } = useSWR('/api/v1/students/1', fetcher);
+  const { data: student, error } = useSWR('/api/v1/student/me', fetcher, {
+    refreshInterval: 5000,
+    revalidateOnFocus: true,
+  });
 
   if (error) return <div className="p-8 text-center text-red-500">Error cargando perfil del estudiante</div>;
   if (!student) return <div className="p-8 flex justify-center items-center min-h-screen"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
@@ -23,7 +26,11 @@ export default function StudentPortalPage() {
   const attendancePct = Math.min(100, Math.round(attendance * 100));
   const prediction = student.predictions?.[0];
 
-  const enrolledCredits = (student.enrollments || []).reduce(
+  const approvedCredits = (student.enrollments || []).reduce(
+    (sum: number, e: any) => sum + ((e.finalGrade != null && e.finalGrade >= 6.0) ? (e.course?.credits || 0) : 0),
+    0
+  );
+  const totalCredits = (student.enrollments || []).reduce(
     (sum: number, e: any) => sum + (e.course?.credits || 0),
     0
   );
@@ -140,20 +147,20 @@ export default function StudentPortalPage() {
             </div>
           </div>
 
-          {/* KPI 3 - Créditos */}
+          {/* KPI 3 - Créditos Aprobados */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-green-50 rounded-bl-full -z-0 group-hover:bg-green-100 transition-colors"></div>
             <div className="relative z-10">
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <p className="text-sm font-medium text-slate-500 mb-1">Créditos Cursados</p>
-                  <h3 className="text-3xl font-bold text-slate-900">{enrolledCredits || '—'}</h3>
+                  <p className="text-sm font-medium text-slate-500 mb-1">Créditos Aprobados</p>
+                  <h3 className="text-3xl font-bold text-slate-900">{approvedCredits}<span className="text-lg text-slate-400 font-normal">/{totalCredits}</span></h3>
                 </div>
                 <div className="p-3 bg-green-50 rounded-xl text-green-600">
                   <GraduationCap className="w-5 h-5" />
                 </div>
               </div>
-              <p className="text-sm text-slate-500">Suma de créditos matriculados este período</p>
+              <p className="text-sm text-slate-500">Créditos aprobados con nota ≥ 6.0</p>
             </div>
           </div>
 

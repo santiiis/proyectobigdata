@@ -18,17 +18,15 @@ export default function ReportExport() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  const handleExportCsv = async () => {
+  const handleExport = async (format: "csv" | "pdf" | "xlsx") => {
     setLoading(true);
     setMessage(null);
     try {
-      const params = new URLSearchParams({ format: "csv", type });
+      const params = new URLSearchParams({ format, type });
       if (type === "PERIOD" && semesterCode.trim()) {
         params.set("semesterCode", semesterCode.trim());
       }
-      const res = await fetch(`/api/v1/reports/export?${params.toString()}`, {
-        headers: { Accept: "text/csv" },
-      });
+      const res = await fetch(`/api/v1/reports/export?${params.toString()}`);
       if (!res.ok) {
         const err = await res.json().catch(() => null);
         throw new Error(err?.error?.message || err?.error || "Error generando el reporte");
@@ -39,21 +37,18 @@ export default function ReportExport() {
       a.href = url;
       const disposition = res.headers.get("Content-Disposition") || "";
       const match = disposition.match(/filename="?([^"]+)"?/);
-      a.download = match ? match[1] : `reporte_${type.toLowerCase()}.csv`;
+      const ext = format === "xlsx" ? "xlsx" : format;
+      a.download = match ? match[1] : `reporte_${type.toLowerCase()}.${ext}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      setMessage({ type: "ok", text: "Reporte CSV descargado correctamente" });
+      setMessage({ type: "ok", text: `Reporte ${format.toUpperCase()} descargado correctamente` });
     } catch (err: any) {
       setMessage({ type: "err", text: err.message || "Error al exportar el reporte" });
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleUnsupported = (fmt: string) => {
-    setMessage({ type: "err", text: `El formato ${fmt} no está disponible en esta versión. Usa la exportación a CSV.` });
   };
 
   return (
@@ -101,21 +96,23 @@ export default function ReportExport() {
 
       <div className="flex flex-wrap gap-4">
         <button
-          onClick={() => handleUnsupported('PDF')}
-          className="flex items-center gap-2 px-5 py-2.5 bg-slate-200 hover:bg-slate-300 disabled:bg-slate-200 text-slate-700 rounded-lg transition-colors font-medium"
+          onClick={() => handleExport("pdf")}
+          disabled={loading}
+          className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-lg transition-colors font-medium"
         >
-          <Download className="w-5 h-5" />
-          PDF (próximamente)
+          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+          Exportar a PDF
         </button>
         <button
-          onClick={() => handleUnsupported('Excel')}
-          className="flex items-center gap-2 px-5 py-2.5 bg-slate-200 hover:bg-slate-300 disabled:bg-slate-200 text-slate-700 rounded-lg transition-colors font-medium"
+          onClick={() => handleExport("xlsx")}
+          disabled={loading}
+          className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white rounded-lg transition-colors font-medium"
         >
-          <Download className="w-5 h-5" />
-          Excel (próximamente)
+          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+          Exportar a Excel
         </button>
         <button
-          onClick={handleExportCsv}
+          onClick={() => handleExport("csv")}
           disabled={loading}
           className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors font-medium"
         >

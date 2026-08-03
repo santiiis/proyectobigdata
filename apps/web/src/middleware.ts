@@ -72,6 +72,9 @@ export async function middleware(request: NextRequest) {
       if (userRole === "TUTOR" && pathname.startsWith("/dashboard/admin")) {
         return NextResponse.redirect(new URL("/dashboard/tutor", request.url));
       }
+      if (userRole === "DIRECTOR" && pathname.startsWith("/dashboard/tutor")) {
+        return NextResponse.redirect(new URL("/dashboard/admin", request.url));
+      }
     }
 
     // RBAC para API Routes

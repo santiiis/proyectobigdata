@@ -35,17 +35,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Determine assigned tutor: if the requester is a student, assign an active tutor automatically
+    let assignedUserId = payload.userId;
+    if (payload.role === "STUDENT") {
+      const tutor = await prisma.user.findFirst({
+        where: { role: "TUTOR", isActive: true },
+        select: { id: true },
+      });
+      if (tutor) {
+        assignedUserId = tutor.id;
+      }
+    }
+
     const data = await prisma.intervention.create({
       data: {
         studentId,
-        userId: payload.userId,
+        userId: assignedUserId,
         title,
         notes
       },
       include: {
+        assignedTo: { select: { name: true, email: true } },
         student: true
       }
     });
+
+    // Audit log
+    try {
+      await prisma.auditLog.create({
+        data: {
+          userId: payload.userId,
+          action: "INTERVENTION_CREATE",
+          entity: "Intervention",
+          entityId: String(data.id),
+          details: { studentId, title },
+          ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown",
+        },
+      });
+    } catch (_) {}
+
     return NextResponse.json({ success: true, data });
   } catch (error) {
     return NextResponse.json({ success: false, error: String(error) }, { status: 500 });

@@ -51,6 +51,20 @@ export async function POST(request: Request) {
     // Set secure cookies
     await setAuthCookies(accessToken, refreshToken);
 
+    // Audit log
+    try {
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "LOGIN",
+          entity: "User",
+          entityId: String(user.id),
+          details: { email: user.email, role: user.role },
+          ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown",
+        },
+      });
+    } catch (_) {}
+
     const responseData: LoginResponseData = {
       user: {
         id: user.id,

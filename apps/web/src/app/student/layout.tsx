@@ -13,7 +13,10 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const [readIds, setReadIds] = useState<string[]>([]);
   const notifRef = useRef<HTMLDivElement>(null);
 
-  const { data: student } = useSWR('/api/v1/students/1', fetcher);
+  const { data: student } = useSWR('/api/v1/student/me', fetcher, {
+    refreshInterval: 5000,
+    revalidateOnFocus: true,
+  });
   const studentName = student ? `${student.firstName} ${student.lastName}` : 'Estudiante';
 
   const notifications = useMemo(() => {

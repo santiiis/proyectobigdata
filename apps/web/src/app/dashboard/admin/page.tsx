@@ -22,7 +22,10 @@ const fetcher = (url: string) => fetch(url).then(res => res.json()).then(res => 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>('main');
   
-  const { data: kpis } = useSWR('/api/v1/admin/kpis', fetcher);
+  const { data: kpis } = useSWR('/api/v1/admin/kpis', fetcher, {
+    refreshInterval: 5000,
+    revalidateOnFocus: true,
+  });
 
   return (
     <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500 bg-slate-50 min-h-screen">

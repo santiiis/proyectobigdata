@@ -47,7 +47,10 @@ const nextStatusLabel: Record<string, string> = {
 };
 
 export default function InterventionKanban() {
-  const { data: rawInterventions, error, mutate } = useSWR('/api/v1/interventions', fetcher);
+  const { data: rawInterventions, error, mutate } = useSWR('/api/v1/interventions', fetcher, {
+    refreshInterval: 5000,
+    revalidateOnFocus: true,
+  });
   const [actionError, setActionError] = useState<string | null>(null);
 
   const moveTask = async (taskId: string, currentStatus: string) => {

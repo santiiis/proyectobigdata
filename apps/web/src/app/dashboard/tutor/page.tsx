@@ -4,10 +4,15 @@ import React from 'react';
 import { Users, AlertTriangle, CheckSquare, CheckCircle } from 'lucide-react';
 import StudentsRiskTable from '@/components/dashboard/tutor/StudentsRiskTable';
 import InterventionKanban from '@/components/dashboard/tutor/InterventionKanban';
-import { useDashboardKpis } from '@/hooks/useDashboard';
+import useSWR from 'swr';
+
+const fetcher = (url: string) => fetch(url).then(res => res.json()).then(res => res.data);
 
 export default function TutorDashboardPage() {
-  const { data: kpis } = useDashboardKpis();
+  const { data: kpis } = useSWR('/api/v1/dashboard/kpis', fetcher, {
+    refreshInterval: 5000,
+    revalidateOnFocus: true,
+  });
 
   const kpiCards = [
     {

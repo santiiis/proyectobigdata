@@ -56,6 +56,20 @@ export async function POST(request: NextRequest) {
       console.error("Error disparando worker interno directamente:", err);
     });
 
+    // Audit log
+    try {
+      await prisma.auditLog.create({
+        data: {
+          userId: triggeredById,
+          action: "BATCH_RUN_START",
+          entity: "BatchJob",
+          entityId: String(newJob.id),
+          details: { jobId, semesterCode, forceRetrain },
+          ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown",
+        },
+      });
+    } catch (_) {}
+
     // Return 202 Accepted immediately
     const responseData: BatchRunResponseData = {
       jobId,

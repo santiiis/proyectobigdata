@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Activity, Target, Crosshair, BarChart2, History, Loader2 } from "lucide-react";
+import { Activity, Target, Crosshair, BarChart2, History, Loader2, TrendingUp } from "lucide-react";
 import useSWR from "swr";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json()).then(res => res.data);
@@ -16,13 +16,14 @@ export default function ModelHealthPanel() {
   const { data: kpis } = useSWR('/api/v1/admin/kpis', fetcher);
   const { data: latestJob } = useSWR('/api/v1/admin/batch-jobs/latest', fetcher);
   const { data: importJobs } = useSWR('/api/v1/admin/import/jobs?limit=5', fetcher);
+  const { data: mlMetrics } = useSWR('/api/v1/admin/ml-metrics', fetcher);
 
   const history = (importJobs || []).map((job: any) => ({
     id: job.id,
     date: new Date(job.createdAt).toISOString().slice(0, 10),
     version: job.jobId,
     size: job.totalRecords ?? 0,
-    recall: statusLabel[job.status] || job.status,
+    status: statusLabel[job.status] || job.status,
     notes: job.errorMessage || (job.processed > 0 ? `${job.processed} registros procesados` : "Importación masiva"),
   }));
 
@@ -36,7 +37,7 @@ export default function ModelHealthPanel() {
         <p className="text-sm text-slate-500 mt-1">Estado del pipeline y actividad reciente</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <MetricCard title="Modelo Activo" value={kpis?.modelVersion || "v1.0.0"} icon={<Activity className="w-5 h-5 text-blue-600" />} />
         <MetricCard
           title="Predicciones Activas"
@@ -53,6 +54,34 @@ export default function ModelHealthPanel() {
           value={kpis?.totalStudents?.toLocaleString() ?? "…"}
           icon={<BarChart2 className="w-5 h-5 text-blue-600" />}
         />
+      </div>
+
+      {/* ML Metrics Section */}
+      <div className="mb-8">
+        <h3 className="text-md font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-slate-500" />
+          Métricas del Modelo (entrenamiento)
+        </h3>
+        <div className="grid grid-cols-3 gap-4">
+          <MetricCard
+            title="Recall"
+            value={mlMetrics?.recall != null ? `${(mlMetrics.recall * 100).toFixed(1)}%` : "—"}
+            icon={<TrendingUp className="w-5 h-5 text-blue-600" />}
+          />
+          <MetricCard
+            title="Precision"
+            value={mlMetrics?.precision != null ? `${(mlMetrics.precision * 100).toFixed(1)}%` : "—"}
+            icon={<TrendingUp className="w-5 h-5 text-blue-600" />}
+          />
+          <MetricCard
+            title="F1-Score"
+            value={mlMetrics?.f1 != null ? `${(mlMetrics.f1 * 100).toFixed(1)}%` : "—"}
+            icon={<TrendingUp className="w-5 h-5 text-blue-600" />}
+          />
+        </div>
+        {mlMetrics?.samples != null && mlMetrics.samples > 0 && (
+          <p className="text-xs text-slate-400 mt-2 text-right">Muestra: {mlMetrics.samples} registros de entrenamiento</p>
+        )}
       </div>
 
       <div>
@@ -88,11 +117,11 @@ export default function ModelHealthPanel() {
                     <td className="py-3 text-slate-500">{row.size}</td>
                     <td className="py-3">
                       <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                        row.recall === 'Completado' ? 'bg-green-100 text-green-700' :
-                        row.recall === 'Fallido' ? 'bg-red-100 text-red-700' :
+                        row.status === 'Completado' ? 'bg-green-100 text-green-700' :
+                        row.status === 'Fallido' ? 'bg-red-100 text-red-700' :
                         'bg-amber-100 text-amber-700'
                       }`}>
-                        {row.recall}
+                        {row.status}
                       </span>
                     </td>
                     <td className="py-3 text-slate-500">{row.notes}</td>

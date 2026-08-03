@@ -2,6 +2,7 @@
 Router for ML predictions (Spec 12.4)
 """
 import time
+import json
 from fastapi import APIRouter, Header, HTTPException, Depends
 from app.schemas.prediction import MLPredictRequest, MLPredictResponse
 from app.core.config import settings
@@ -62,9 +63,9 @@ async def predict_risk(request: MLPredictRequest):
         score = float(proba[1]) # Probability of being AtRisk
         
     risk_level = "LOW"
-    if score >= 0.70:
+    if score >= 0.66:
         risk_level = "HIGH"
-    elif score >= 0.40:
+    elif score >= 0.31:
         risk_level = "MEDIUM"
         
     # Generate dynamic risk factors based on features
@@ -87,3 +88,13 @@ async def predict_risk(request: MLPredictRequest):
         modelVersion=settings.MODEL_VERSION,
         executionTimeMs=round((time.time() - start_time) * 1000, 2)
     )
+
+
+@router.get("/metrics")
+async def get_model_metrics():
+    """Return saved model training metrics (Recall, Precision, F1-Score)."""
+    metrics_path = os.path.join(os.path.dirname(__file__), '..', 'ml', 'model_metrics.json')
+    if os.path.exists(metrics_path):
+        with open(metrics_path, 'r') as f:
+            return json.load(f)
+    return {"recall": 0, "precision": 0, "f1": 0, "samples": 0, "version": settings.MODEL_VERSION}

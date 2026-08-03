@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     fetch(`${FASTAPI_URL}/api/v1/import/oulad`, {
       method: "POST",
       headers: {
-        "x-worker-secret": WORKER_SECRET
+        "X-Internal-API-Key": WORKER_SECRET
       },
       body
     }).catch(async (err) => {

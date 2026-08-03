@@ -14,7 +14,10 @@ const statusMap: Record<string, { label: string; done: boolean }> = {
 };
 
 export function CommitmentHistory({ studentId }: { studentId: number }) {
-  const { data, error } = useSWR(`/api/v1/students/${studentId}/interventions`, fetcher);
+  const { data, error } = useSWR(`/api/v1/students/${studentId}/interventions`, fetcher, {
+    refreshInterval: 5000,
+    revalidateOnFocus: true,
+  });
 
   const commitments = (data || []).map((inv: any) => ({
     date: inv.createdAt,

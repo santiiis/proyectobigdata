@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     fetch(backendUrl, {
       method: "POST",
       headers: {
-        "x-worker-secret": apiKey,
+        "X-Internal-API-Key": apiKey,
       },
       body,
     }).catch(async (error) => {
