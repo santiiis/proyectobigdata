@@ -1,0 +1,115 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { Play, Activity, Loader2 } from "lucide-react";
+import useSWR from "swr";
+
+const fetcher = (url: string) => fetch(url).then(res => res.json()).then(res => res.data);
+
+export default function MLPipelineMonitor() {
+  const [triggering, setTriggering] = useState(false);
+  const [localLogs, setLocalLogs] = useState<string[]>([]);
+  const logsEndRef = useRef<HTMLDivElement>(null);
+
+  // Poll for the latest job every 3 seconds
+  const { data: latestJob } = useSWR("/api/v1/admin/batch-jobs/latest", fetcher, { refreshInterval: 3000 });
+
+  const isRunning = latestJob?.status === "PROCESSING" || triggering;
+
+  const handleTrigger = async () => {
+    if (isRunning) return;
+    setTriggering(true);
+    setLocalLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Iniciando corrida batch...`]);
+    
+    try {
+      const res = await fetch("/api/v1/predictions/batch-run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ semesterCode: "2026-A", forceRetrain: false })
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message || "Error desconocido");
+      setLocalLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Job creado: ${json.data.jobId}`]);
+    } catch (err: any) {
+      setLocalLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Error: ${err.message}`]);
+    } finally {
+      setTriggering(false);
+    }
+  };
+
+  useEffect(() => {
+    logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [localLogs, latestJob]);
+
+  const displayLogs = [
+    ...localLogs,
+  ];
+
+  if (latestJob) {
+    displayLogs.push(`[ESTADO] Último Job: ${latestJob.jobId} - ${latestJob.status}`);
+    if (latestJob.status === 'COMPLETED') {
+       displayLogs.push(`[ÉXITO] Modelo ha terminado el procesamiento y guardado de resultados.`);
+    } else if (latestJob.status === 'FAILED') {
+       displayLogs.push(`[ERROR] El proceso falló: ${latestJob.errorMessage || 'Desconocido'}`);
+    }
+  }
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm h-full flex flex-col overflow-hidden">
+      <div className="p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-semibold flex items-center gap-2 text-slate-900">
+            <Activity className="w-5 h-5 text-blue-600" />
+            Monitor del Pipeline de IA
+          </h3>
+          <p className="text-sm text-slate-500 mt-1">Ejecuta y monitorea trabajos de predicción batch manualmente</p>
+        </div>
+        <button 
+          onClick={handleTrigger}
+          disabled={isRunning}
+          className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shadow-sm ${
+            isRunning 
+              ? "bg-slate-100 text-slate-500 cursor-not-allowed" 
+              : "bg-blue-600 hover:bg-blue-700 text-white"
+          }`}
+        >
+          {isRunning ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Procesando...
+            </>
+          ) : (
+            <>
+              <Play className="w-4 h-4" />
+              Ejecutar Corrida Batch
+            </>
+          )}
+        </button>
+      </div>
+      
+      <div className="flex-grow p-6 bg-slate-900 font-mono text-xs sm:text-sm text-slate-300 overflow-y-auto max-h-[300px]">
+        {displayLogs.map((log, i) => (
+          <div key={i} className={`py-1 ${log.includes("ÉXITO") ? "text-green-400" : log.includes("Error") || log.includes("ERROR") ? "text-red-400" : ""}`}>
+            <span className="opacity-50 select-none mr-2">{">"}</span>
+            {log}
+          </div>
+        ))}
+        {isRunning && (
+          <div className="py-1 animate-pulse flex items-center gap-2 text-blue-300">
+            <span className="opacity-50">{">"}</span>
+            [Procesando] El backend de Python está computando predicciones...
+          </div>
+        )}
+        <div ref={logsEndRef} />
+      </div>
+      
+      <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-500">
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-amber-500 animate-pulse' : 'bg-green-500'}`}></div>
+          Estado: {isRunning ? 'Procesando' : 'Inactivo'}
+        </div>
+        <div>Último ID: {latestJob?.jobId || "Ninguno"}</div>
+      </div>
+    </div>
+  );
+}
