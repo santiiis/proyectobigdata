@@ -1,4 +1,4 @@
-<h1>🎓 Predicción de Deserción Estudiantil - Proyecto Integrador Big Data</h1>
+<h1> Predicción de Deserción Estudiantil - Proyecto Integrador Big Data</h1>
 
 <p>
   <strong>Asignatura:</strong> Prácticas y Herramientas de Big Data<br>
@@ -11,7 +11,7 @@
 
 <hr>
 
-<h2>📌 1. Planteamiento del Problema y Pregunta Analítica</h2>
+<h2> 1. Planteamiento del Problema y Pregunta Analítica</h2>
 
 <p>
   La deserción universitaria temprana compromete la continuidad pedagógica y la sostenibilidad institucional. 
@@ -37,12 +37,12 @@
 
 <hr>
 
-<h2>🗂️ 2. Fuentes de Datos y Volumen Masivo</h2>
+<h2> 2. Fuentes de Datos y Volumen Masivo</h2>
 
 <p>
   Los datos originales provienen del repositorio público en Kaggle:
   <br>
-  👉 <a href="https://www.kaggle.com/datasets/anlgrbz/student-demographics-online-education-dataoulad" target="_blank"><strong>Open University Learning Analytics Dataset (OULAD) en Kaggle</strong></a>
+   <a href="https://www.kaggle.com/datasets/anlgrbz/student-demographics-online-education-dataoulad" target="_blank"><strong>Open University Learning Analytics Dataset (OULAD) en Kaggle</strong></a>
 </p>
 
 <ul>
@@ -61,7 +61,7 @@
 
 <hr>
 
-<h2>🏗️ 3. Arquitectura de la Solución End-to-End</h2>
+<h2> 3. Arquitectura de la Solución End-to-End</h2>
 
 <pre>
 [ Fuentes CSV / 10.6M Logs OULAD (Kaggle) ]
@@ -107,7 +107,7 @@
 
 <hr>
 
-<h2>⚙️ 4. Pipeline ETL y Almacenamiento Columnar</h2>
+<h2> 4. Pipeline ETL y Almacenamiento Columnar</h2>
 
 <p>
   El procesamiento distribuido en <strong>PySpark</strong> consolidó los datos en seis fases:
@@ -156,7 +156,7 @@
 
 <hr>
 
-<h2>📊 5. Modelado, Experimentación y Tracking en MLflow</h2>
+<h2> 5. Modelado, Experimentación y Tracking en MLflow</h2>
 
 <p>
   Se evaluaron tres familias de modelos mediante <strong>CrossValidator (3 pliegues)</strong> y 
@@ -211,7 +211,7 @@
 
 <hr>
 
-<h2>📈 6. Importancia Relativa de Variables (Feature Importance)</h2>
+<h2> 6. Importancia Relativa de Variables (Feature Importance)</h2>
 
 <p>
   Importancia de características extraída del modelo ganador <strong>GBT Classifier</strong>:
@@ -256,7 +256,7 @@
 
 <hr>
 
-<h2>🔍 7. Detección de Anomalías (TA-4.3)</h2>
+<h2> 7. Detección de Anomalías (TA-4.3)</h2>
 
 <p>
   Mediante el método estadístico <strong>Z-Score</strong> sobre la variable <code>sum_click</code> ($|Z| > 3.0$), se identificaron 
@@ -268,7 +268,7 @@
 
 <hr>
 
-<h2>🛡️ 8. Gobierno de Datos y Auditoría Ética</h2>
+<h2> 8. Gobierno de Datos y Auditoría Ética</h2>
 
 <h3>Calidad de Datos - Marco DAMA (6 Dimensiones)</h3>
 <ul>
@@ -317,7 +317,7 @@
 
 <hr>
 
-<h2>🚀 9. Instrucciones de Reproducibilidad</h2>
+<h2> 9. Instrucciones de Reproducibilidad</h2>
 
 <ol>
   <li>Clonar el repositorio:
