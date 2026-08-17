@@ -61,7 +61,7 @@
 
 <hr>
 
-<h2>🏗️ 3. Arquitectura de la Solución End-to-End</h2>
+<h2> 3. Arquitectura de la Solución End-to-End</h2>
 
 <pre>
 [ Fuentes CSV / 10.6M Logs OULAD (Kaggle) ]
