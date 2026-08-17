@@ -1,4 +1,4 @@
-
+# Sistema de Alerta Temprana para Deserción Estudiantil con Apache Spark
 
 Proyecto integrador de la materia **Prácticas y Herramientas de Big Data** en la **Universidad Internacional del Ecuador (UIDE)**.
 
@@ -21,7 +21,12 @@ El objetivo de este proyecto fue construir un sistema de alerta temprana utiliza
 
 El sistema está construido en capas desacopladas para garantizar procesamiento distribuido y escalabilidad:
 
-[ Datos Crudos OULAD (CSV de Kaggle) ]│▼  (Ingesta distribuida)[ Pipeline ETL en PySpark ] ─────────> Limpieza, imputación y ensamblado de vectores│▼  (Almacenamiento columnar)[ Data Lake en Parquet ] ────────────> Particionado por módulo (reducción del 68.5% en disco)│▼  (Modelado y optimización)[ Spark MLlib + MLflow Tracking ] ───> CrossValidator (3 pliegues) + ParamGrid│▼  (Acción institucional)[ Alertas y Auditoría Ética ] ───────> Disparador de tutorías preventivas (probabilidad > 0.65)
+* **1. Ingesta:** Carga distribuida de registros crudos OULAD (CSV de Kaggle) en Apache Spark.
+* **2. Procesamiento ETL:** Limpieza de fechas anómalas, imputación determinista y ensamble de características con `VectorAssembler`.
+* **3. Data Lake:** Almacenamiento columnar en formato **Parquet particionado por `code_module`** (reducción del 68.5% de tamaño en disco).
+* **4. Modelado y MLflow:** Entrenamiento distribuido con `Spark MLlib`, validación cruzada (`CrossValidator` de 3 pliegues) y registro de experimentos en MLflow.
+* **5. Explotación y Ética:** Inferencia y disparador de tutorías preventivas para estudiantes con riesgo superior a 0.65.
+
 ---
 
 ## Pipeline ETL y Almacenamiento
@@ -68,7 +73,13 @@ Al analizar el modelo final de Random Forest, encontramos el peso de cada variab
 
 ## Estructura del Repositorio
 
-├── data/│   └── README.md                       # Enlace directo al dataset OULAD en Kaggle├── notebooks/│   └── notebook_integrador_bigdata.ipynb  # Notebook reproducible de inicio a fin├── docs/│   ├── informe_final_proyecto.pdf      # Informe académico completo (12 secciones)│   └── presentacion_ejecutiva.pdf      # Diapositivas para la defensa de 10 min├── mlruns/                             # Registro local de los runs de MLflow└── README.md                           # Este documento
+* `data/README.md`: Enlace directo al dataset OULAD en Kaggle.
+* `notebooks/notebook_integrador_bigdata.ipynb`: Cuaderno de Google Colab reproducible de inicio a fin.
+* `docs/informe_final_proyecto.pdf`: Informe académico formal de 12 secciones.
+* `docs/presentacion_ejecutiva.pdf`: Diapositivas para la defensa de 10 minutos.
+* `mlruns/`: Registro local de experimentos y métricas de MLflow.
+* `README.md`: Documentación principal del proyecto.
+
 ---
 
 ## ¿Cómo reproducir este proyecto?
@@ -76,7 +87,6 @@ Al analizar el modelo final de Random Forest, encontramos el peso de cada variab
 El cuaderno está preparado para ejecutarse completamente desde cero:
 
 1. Clona este repositorio:
-   ```bash
-   git clone [https://github.com/santiiis/proyectobigdata.git](https://github.com/santiiis/proyectobigdata.git)
-   cd proyectobigdata
-Abre el archivo notebooks/notebook_integrador_bigdata.ipynb en Google Colab.En el menú superior, ve a Entorno de ejecución $\rightarrow$ Reiniciar y ejecutar todo.El script instalará las dependencias (pyspark y mlflow), procesará el dataset OULAD, correrá el ETL, persistirá el Data Lake en Parquet, entrenará los 3 modelos y mostrará los resultados sin pedir archivos externos ni pasos manuales.
+```bash
+git clone [https://github.com/santiiis/proyectobigdata.git](https://github.com/santiiis/proyectobigdata.git)
+cd proyectobigdata
