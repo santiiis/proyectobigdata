@@ -1,16 +1,17 @@
-<h1>Predicción de Deserción Estudiantil - Proyecto Integrador Big Data</h1>
+<h1> Predicción de Deserción Estudiantil - Proyecto Integrador Big Data</h1>
 
 <p>
   <strong>Asignatura:</strong> Prácticas y Herramientas de Big Data<br>
   <strong>Institución:</strong> Universidad Internacional del Ecuador (UIDE)<br>
   <strong>Docente:</strong> Ing. Diego Pinto<br>
   <strong>Integrantes:</strong> Lander González &amp; Erick Morales<br>
-  <strong>Tema Asignado:</strong> Predicción de Deserción Estudiantil (Grupo 7)
+  <strong>Tema Asignado:</strong> Predicción de Deserción Estudiantil (Grupo 7)<br>
+  <strong>Repositorio Oficial:</strong> <a href="https://github.com/santiiis/proyectobigdata" target="_blank">https://github.com/santiiis/proyectobigdata</a>
 </p>
 
 <hr>
 
-<h2>1. Planteamiento del Problema y Pregunta Analítica</h2>
+<h2> 1. Planteamiento del Problema y Pregunta Analítica</h2>
 
 <p>
   La deserción universitaria temprana compromete la continuidad pedagógica y la sostenibilidad institucional. 
@@ -26,24 +27,23 @@
     (<code>num_of_prev_attempts</code>) permiten predecir el riesgo de deserción 
     estudiantil antes de las evaluaciones parciales mediante un pipeline distribuido de Big Data?
   </li>
-
   <br>
-
   <li>
     <strong>Métrica de Éxito:</strong>
-    Alcanzar un <strong>AUC-ROC ≥ 0.80</strong> y un 
-    <strong>F1-Score ≥ 0.75</strong> en el conjunto de prueba independiente del 20%, 
+    Alcanzar un <strong>AUC-ROC &ge; 0.80</strong> (métrica primaria de discriminación) y un 
+    <strong>F1-Score &ge; 0.75</strong> en el conjunto de prueba independiente del 20%, 
     priorizando la minimización de falsos negativos.
   </li>
 </ul>
 
 <hr>
 
-<h2>2. Fuentes de Datos y Volumen Masivo</h2>
+<h2> 2. Fuentes de Datos y Volumen Masivo</h2>
 
 <p>
-  Los datos originales provienen del 
-  <strong>Open University Learning Analytics Dataset (OULAD)</strong>.
+  Los datos originales provienen del repositorio público en Kaggle:
+  <br>
+   <a href="https://www.kaggle.com/datasets/anlgrbz/student-demographics-online-education-dataoulad" target="_blank"><strong>Open University Learning Analytics Dataset (OULAD) en Kaggle</strong></a>
 </p>
 
 <ul>
@@ -52,9 +52,7 @@
     Datos sociodemográficos, académicos y estado final obtenidos de 
     <code>studentInfo.csv</code> y <code>studentRegistration.csv</code>.
   </li>
-
   <br>
-
   <li>
     <strong>Más de 10.6 millones de interacciones LMS:</strong>
     Telemetría de clics y logs de navegación en el campus virtual obtenidos de 
@@ -64,22 +62,22 @@
 
 <hr>
 
-<h2>3. Arquitectura de la Solución End-to-End</h2>
+<h2> 3. Arquitectura de la Solución End-to-End</h2>
 
 <pre>
-[ Fuentes CSV / 10.6M Logs OULAD ]
+[ Fuentes CSV / 10.6M Logs OULAD (Kaggle) ]
                  │
                  ▼
         Ingesta distribuida
                  │
                  ▼
-[ Pipeline ETL en Apache Spark ]
+[ Pipeline ETL en Apache Spark (PySpark) ]
                  │
-                 ├── Agregación masiva
-                 ├── Validación de datos
-                 ├── Filtrado temporal
-                 ├── Imputación
-                 └── Ingeniería de características
+                 ├── Agregación masiva de telemetría
+                 ├── Validación y eliminación de duplicados
+                 ├── Filtrado temporal [-150, +30] días
+                 ├── Imputación determinista de nulos
+                 └── Ingeniería de características (StandardScaler + VectorAssembler)
                  │
                  ▼
       Almacenamiento columnar
@@ -91,454 +89,341 @@
                  └── Reducción del 68.5% en almacenamiento
                  │
                  ▼
-    Entrenamiento y experimentación
+   Entrenamiento y experimentación
                  │
                  ▼
 [ Spark MLlib + MLflow Tracking ]
                  │
-                 ├── CrossValidator
-                 ├── 3 pliegues
-                 └── ParamGrid
+                 ├── CrossValidator (3 pliegues)
+                 ├── ParamGridBuilder
+                 └── Evaluación de 3 familias algorítmicas
                  │
                  ▼
 [ Resultados y Auditoría Ética ]
                  │
-                 ├── Calidad DAMA
-                 ├── LOPDP
-                 └── Riesgos y mitigaciones
+                 ├── Calidad DAMA (6 dimensiones)
+                 ├── Cumplimiento LOPDP (Ecuador)
+                 └── Matriz de 3 riesgos y mitigaciones
 </pre>
 
 <hr>
 
-<h2>4. Pipeline ETL y Almacenamiento Columnar</h2>
+<h2> 4. Pipeline ETL y Almacenamiento Columnar</h2>
 
 <p>
   El procesamiento de los datos se realizó mediante <strong>PySpark</strong>, 
-  siguiendo las siguientes etapas:
+  estructurado en seis fases formales:
 </p>
 
 <h3>4.1 Agregación masiva de telemetría</h3>
-
 <p>
   Se procesaron de forma distribuida más de <strong>10.6 millones de interacciones</strong>
-  del entorno virtual para consolidar la actividad de los estudiantes mediante variables como
-  <code>sum_click</code>, <code>id_student</code> y <code>code_module</code>.
+  del entorno virtual para consolidar la actividad por estudiante y módulo curricular mediante
+  <code>groupBy("id_student", "code_module").agg(sum("sum_click"))</code>.
 </p>
 
 <h3>4.2 Validación y eliminación de duplicados</h3>
-
 <p>
-  Se verificó la integridad de los registros y se eliminaron datos duplicados o inconsistentes
-  antes del procesamiento final.
+  Se verificó la integridad de tipos de datos estructurados y se eliminaron tuplas redundantes 
+  previo a la consolidación relacional.
 </p>
 
 <h3>4.3 Filtrado temporal</h3>
-
 <p>
-  Se descartaron inconsistencias en <code>date_registration</code> fuera del rango
-  operacional válido de <strong>[-150, +30] días</strong> respecto al inicio del curso.
+  Se descartaron 36 registros con inconsistencias operacionales en <code>date_registration</code> 
+  fuera del rango válido de <strong>[-150, +30] días</strong> respecto al inicio oficial del curso.
 </p>
 
 <h3>4.4 Imputación determinista</h3>
-
 <ul>
-  <li><code>0.0</code> para clics ausentes.</li>
-  <li><code>0</code> para intentos previos.</li>
-  <li><code>60</code> créditos para valores faltantes de carga académica.</li>
+  <li><code>0.0</code> para clics ausentes en el aula virtual.</li>
+  <li><code>0</code> para intentos previos sin registro de repitencia.</li>
+  <li><code>60</code> créditos (mediana institucional) para valores faltantes de carga académica.</li>
 </ul>
 
 <h3>4.5 Ingeniería de características</h3>
-
-<p>Las variables utilizadas para el modelado fueron preparadas mediante:</p>
-
-<ul>
-  <li><code>VectorAssembler</code></li>
-  <li><code>StandardScaler</code></li>
-</ul>
-
-<h3>4.6 Almacenamiento en Parquet</h3>
-
 <p>
-  Los datos procesados fueron almacenados en formato <strong>Parquet</strong> y
-  particionados por <code>code_module</code>.
+  Estandarización de escala numérica con <code>StandardScaler</code> y ensamble de vector denso multivariable 
+  con <code>VectorAssembler</code>.
 </p>
 
-<table>
+<h3>4.6 Almacenamiento en Parquet y Cifras de Impacto</h3>
+<p>
+  Los datos procesados fueron persistidos en el Data Lake en formato columnar <strong>Parquet</strong> y 
+  particionados físicamente por <code>code_module</code>.
+</p>
+
+<table width="100%" border="1" cellpadding="6" cellspacing="0">
   <thead>
-    <tr>
-      <th>Formato</th>
-      <th>Tamaño</th>
+    <tr bgcolor="#f2f2f2">
+      <th align="left">Indicador del Pipeline ETL</th>
+      <th align="center">Métrica Obtenida</th>
+      <th align="left">Impacto Técnico</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>CSV</td>
-      <td>12.4 MB</td>
-    </tr>
-    <tr>
-      <td>Parquet</td>
-      <td>3.9 MB</td>
-    </tr>
-    <tr>
-      <td><strong>Reducción</strong></td>
-      <td><strong>68.5%</strong></td>
-    </tr>
-  </tbody>
-</table>
-
-<h3>Impacto del ETL</h3>
-
-<table>
-  <thead>
-    <tr>
-      <th>Indicador</th>
-      <th>Resultado</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Registros iniciales</td>
-      <td>32,593</td>
+      <td>Registros iniciales en bruto</td>
+      <td align="center">32,593</td>
+      <td>Universo inicial consolidado de OULAD</td>
     </tr>
     <tr>
       <td>Registros descartados</td>
-      <td>36</td>
+      <td align="center">36</td>
+      <td>0.11% de anomalías en fechas operacionales</td>
     </tr>
     <tr>
-      <td>Registros finales</td>
-      <td><strong>32,557</strong></td>
+      <td>Registros limpios finales</td>
+      <td align="center"><strong>32,557</strong></td>
+      <td>100% de consistencia e integridad relacional</td>
+    </tr>
+    <tr>
+      <td>Tamaño en disco (CSV plano vs. Parquet)</td>
+      <td align="center"><strong>12.4 MB &rarr; 3.9 MB</strong></td>
+      <td><strong>68.5% de reducción de almacenamiento</strong> y optimización en I/O</td>
     </tr>
   </tbody>
 </table>
 
 <hr>
 
-<h2>5. Modelado, Experimentación y Tracking en MLflow</h2>
+<h2> 5. Modelado, Experimentación y Tracking en MLflow</h2>
 
 <p>
-  Se compararon tres modelos mediante validación cruzada de <strong>3 pliegues</strong>,
-  optimización de hiperparámetros con <code>ParamGrid</code> y registro de experimentos
-  en <strong>MLflow</strong>.
+  Se compararon tres familias de modelos mediante validación cruzada estratificada de <strong>3 pliegues</strong>, 
+  optimización de hiperparámetros con <code>ParamGridBuilder</code> y registro formal de artefactos y métricas 
+  en <strong>MLflow Tracking</strong>:
 </p>
 
-<table>
+<table width="100%" border="1" cellpadding="6" cellspacing="0">
   <thead>
-    <tr>
-      <th>Run ID</th>
-      <th>Modelo Evaluado</th>
-      <th>Hiperparámetros Clave</th>
-      <th>AUC-ROC</th>
-      <th>F1-Score</th>
-      <th>Veredicto Técnico</th>
+    <tr bgcolor="#f2f2f2">
+      <th align="center">Run ID</th>
+      <th align="left">Modelo Evaluado</th>
+      <th align="left">Hiperparámetros Clave</th>
+      <th align="center">AUC-ROC</th>
+      <th align="center">F1-Score</th>
+      <th align="left">Veredicto Técnico</th>
     </tr>
   </thead>
-
   <tbody>
-    <tr>
-      <td><code>run_01</code></td>
+    <tr bgcolor="#e6f3ff">
+      <td align="center"><code>run_01</code></td>
       <td><strong>Logistic Regression</strong></td>
       <td><code>regParam = 0.01</code></td>
-      <td><strong>0.8413</strong></td>
-      <td>0.7539</td>
-      <td><strong>Seleccionado como modelo final</strong></td>
+      <td align="center"><strong>0.8413</strong></td>
+      <td align="center">0.7539</td>
+      <td><strong>Seleccionado como modelo óptimo</strong></td>
     </tr>
-
     <tr>
-      <td><code>run_02</code></td>
+      <td align="center"><code>run_02</code></td>
       <td>GBT Classifier</td>
       <td><code>maxDepth = 5, maxIter = 20</code></td>
-      <td>0.8380</td>
-      <td><strong>0.7728</strong></td>
-      <td>Rendimiento competitivo</td>
+      <td align="center">0.8380</td>
+      <td align="center"><strong>0.7728</strong></td>
+      <td>Rendimiento competitivo (Mayor latencia de cómputo)</td>
     </tr>
-
     <tr>
-      <td><code>run_03</code></td>
+      <td align="center"><code>run_03</code></td>
       <td>Random Forest</td>
       <td><code>numTrees = 100, maxDepth = 8</code></td>
-      <td>0.8398</td>
-      <td>0.7719</td>
-      <td>Rendimiento competitivo</td>
+      <td align="center">0.8398</td>
+      <td align="center">0.7719</td>
+      <td>Robusto ante varianza</td>
     </tr>
   </tbody>
 </table>
 
-<h3>Justificación técnica</h3>
-
+<h3>Justificación técnica de la selección</h3>
 <p>
-  <strong>Logistic Regression</strong> fue seleccionado como modelo final debido a que
-  obtuvo el mayor <strong>AUC-ROC de 0.8413</strong>, siendo esta la métrica principal
-  definida para el proyecto.
-</p>
-
-<p>
-  Además, alcanzó un <strong>F1-Score de 0.7539</strong>, cumpliendo el valor mínimo
-  establecido de 0.75.
-</p>
-
-<p>
-  Aunque el modelo GBT obtuvo un F1-Score ligeramente superior, la Regresión Logística
-  presentó una mejor capacidad global de discriminación según el AUC-ROC, además de
-  ofrecer mayor interpretabilidad y eficiencia computacional.
+  <strong>Logistic Regression</strong> fue seleccionado como el modelo final debido a que obtuvo el mayor 
+  <strong>AUC-ROC (0.8413)</strong>, definido como la métrica primaria para maximizar la capacidad de discriminación 
+  entre desertores y no desertores. Aunque GBT alcanzó un F1-Score ligeramente superior (0.7728), ambos modelos 
+  superaron el umbral mínimo exigido (F1 &ge; 0.75). Se priorizó la Regresión Logística por su principio de 
+  parsimonia, interpretabilidad directa de coeficientes para auditoría ética y menor costo computacional durante 
+  la inferencia distribuida.
 </p>
 
 <hr>
 
-<h2>6. Importancia Relativa de Variables</h2>
+<h2> 6. Importancia Relativa de Variables</h2>
 
 <p>
-  La importancia relativa de las variables se estimó a partir del valor absoluto de los
-  coeficientes estandarizados del modelo de Regresión Logística, normalizados porcentualmente.
+  La importancia relativa de las variables se calculó a partir del valor absoluto de los coeficientes 
+  estandarizados ($|\beta_j|$) de la Regresión Logística sobre variables normalizadas, escaladas porcentualmente al 100%:
 </p>
 
-<table>
+<table width="100%" border="1" cellpadding="6" cellspacing="0">
   <thead>
-    <tr>
-      <th>Variable</th>
-      <th>Importancia</th>
+    <tr bgcolor="#f2f2f2">
+      <th align="left">Variable</th>
+      <th align="left">Descripción Académica</th>
+      <th align="center">Importancia Relativa</th>
     </tr>
   </thead>
-
   <tbody>
     <tr>
-      <td>Telemetría acumulada (<code>sum_click</code>)</td>
-      <td><strong>77.37%</strong></td>
+      <td><code>sum_click</code></td>
+      <td>Telemetría acumulada de interacción en aula virtual</td>
+      <td align="center"><strong>77.37%</strong></td>
     </tr>
-
     <tr>
-      <td>Intentos previos (<code>num_of_prev_attempts</code>)</td>
-      <td><strong>17.26%</strong></td>
+      <td><code>num_of_prev_attempts</code></td>
+      <td>Historial de intentos previos y reprobaciones</td>
+      <td align="center"><strong>17.26%</strong></td>
     </tr>
-
     <tr>
-      <td>Antelación de matrícula (<code>date_registration</code>)</td>
-      <td>3.81%</td>
+      <td><code>date_registration</code></td>
+      <td>Días de antelación o retraso en la matrícula</td>
+      <td align="center">3.81%</td>
     </tr>
-
     <tr>
-      <td>Créditos matriculados (<code>studied_credits</code>)</td>
-      <td>1.56%</td>
+      <td><code>studied_credits</code></td>
+      <td>Carga crediticia total matriculada</td>
+      <td align="center">1.56%</td>
     </tr>
   </tbody>
 </table>
 
 <blockquote>
-  <strong>Conclusión Analítica:</strong>
-  El <strong>94.63%</strong> de la importancia relativa se concentra en la telemetría
-  temprana (<code>sum_click</code>) y el historial de intentos previos
-  (<code>num_of_prev_attempts</code>).
+  <strong>Conclusión Analítica:</strong> 
+  El <strong>94.63%</strong> del poder explicativo global del modelo radica conjuntamente en la telemetría temprana 
+  (<code>sum_click</code>) y el historial de repitencia del estudiante (<code>num_of_prev_attempts</code>).
 </blockquote>
 
 <hr>
 
-<h2>7. Detección de Anomalías</h2>
+<h2> 7. Detección de Anomalías (TA-4.3)</h2>
 
 <p>
-  Se identificaron <strong>599 registros estadísticamente atípicos</strong>,
-  equivalentes al <strong>1.84%</strong> de los datos analizados, mediante el método
-  <strong>Z-Score</strong>.
+  Mediante el método estadístico <strong>Z-Score</strong> sobre la variable <code>sum_click</code>, se identificaron 
+  <strong>599 registros estadísticamente atípicos</strong>, equivalentes al <strong>1.84%</strong> de los 32,557 datos procesados.
 </p>
 
-<p>El criterio utilizado fue:</p>
-
-<pre>|Z| &gt; 3.0</pre>
+<pre>Criterio de corte: |Z| &gt; 3.0</pre>
 
 <p>
-  Estos registros fueron identificados como posibles valores atípicos para evaluar
-  su impacto dentro del análisis y del comportamiento general de los datos.
+  Estos casos correspondieron a estudiantes con niveles de actividad estadísticamente extremos respecto a la distribución 
+  general, los cuales fueron identificados y aislados para evaluar su posible impacto en la estabilidad numérica del modelo 
+  sin sesgar el entrenamiento distribuido.
 </p>
 
 <hr>
 
-<h2>8. Gobierno de Datos y Auditoría Ética</h2>
+<h2> 8. Gobierno de Datos y Auditoría Ética</h2>
 
-<h3>Calidad de Datos - DAMA</h3>
-
+<h3>Calidad de Datos - Marco DAMA (6 Dimensiones)</h3>
 <ul>
-  <li>Completitud</li>
-  <li>Consistencia</li>
-  <li>Validez</li>
-  <li>Exactitud</li>
-  <li>Unicidad</li>
-  <li>Oportunidad</li>
+  <li><strong>Completitud:</strong> 99.8% en variables analíticas tras la imputación determinista.</li>
+  <li><strong>Consistencia:</strong> 100% de integridad referencial entre tablas de matrícula y telemetría LMS.</li>
+  <li><strong>Validez:</strong> 100% de esquemas tipificados bajo el estándar Parquet.</li>
+  <li><strong>Exactitud:</strong> 99.89% tras depurar los 36 registros con fechas operacionales fuera de rango.</li>
+  <li><strong>Unicidad:</strong> 100% de perfiles únicos garantizados por la clave compuesta (<code>id_student</code>, <code>code_module</code>).</li>
+  <li><strong>Oportunidad:</strong> Telemetría procesada durante las primeras cuatro semanas lectivas, habilitando soporte preventivo.</li>
 </ul>
 
-<p>
-  Después del proceso ETL se alcanzó un <strong>99.8% de completitud</strong>
-  y un <strong>100% de consistencia relacional</strong> en los identificadores procesados.
-</p>
-
-<h3>Cumplimiento de la LOPDP</h3>
-
+<h3>Cumplimiento de la LOPDP (Ecuador)</h3>
 <ul>
-  <li>Seudonimización de identificadores.</li>
-  <li>Aplicación del principio de finalidad.</li>
-  <li>Uso de los datos exclusivamente para análisis y apoyo pedagógico.</li>
-  <li>Evitar decisiones automáticas que afecten directamente al estudiante.</li>
+  <li><strong>Seudonimización estricta:</strong> Eliminación de identificadores directos (nombres, cédulas, correos), operando únicamente con códigos numéricos artificiales (<code>id_student</code>).</li>
+  <li><strong>Principio de finalidad:</strong> Restricción estricta del uso de datos para fines psicopedagógicos y de bienestar estudiantil institucional.</li>
 </ul>
 
-<h3>Riesgos éticos y mitigaciones</h3>
+<h3>Matriz de Riesgos Éticos y Mitigaciones</h3>
 
-<table>
+<table width="100%" border="1" cellpadding="6" cellspacing="0">
   <thead>
-    <tr>
-      <th>Riesgo</th>
-      <th>Posible impacto</th>
-      <th>Medida de mitigación</th>
+    <tr bgcolor="#f2f2f2">
+      <th align="left">Riesgo Identificado</th>
+      <th align="center">Nivel</th>
+      <th align="left">Medida de Mitigación Implementada</th>
     </tr>
   </thead>
-
   <tbody>
     <tr>
-      <td>Brecha digital</td>
-      <td>Penalización de estudiantes con conectividad limitada</td>
-      <td>No depender únicamente del nivel de clics</td>
+      <td><strong>Brecha digital</strong></td>
+      <td align="center"><strong>Alto</strong></td>
+      <td>Ponderación multivariable (antecedentes académicos y matrícula) para no catalogar a un alumno como desertor únicamente por baja conectividad en zonas rurales.</td>
     </tr>
-
     <tr>
-      <td>Estigmatización</td>
-      <td>Clasificación incorrecta de estudiantes como desertores</td>
-      <td>Utilizar las predicciones como alertas preventivas</td>
+      <td><strong>Estigmatización</strong></td>
+      <td align="center"><strong>Medio</strong></td>
+      <td>Los reportes no se divulgan públicamente; las intervenciones se canalizan de forma confidencial como invitaciones generales a tutorías de apoyo académico.</td>
     </tr>
-
     <tr>
-      <td>Decisiones automatizadas</td>
-      <td>Aplicación de medidas basadas únicamente en el modelo</td>
-      <td>Mantener revisión humana antes de cualquier intervención</td>
+      <td><strong>Decisiones automatizadas</strong></td>
+      <td align="center"><strong>Alto</strong></td>
+      <td>El modelo opera como triaje de apoyo preventivo; ninguna sanción o desvinculación administrativa se aplica automáticamente sin previa validación docente presencial.</td>
     </tr>
   </tbody>
 </table>
 
 <hr>
 
-<h2>9. Instrucciones de Reproducibilidad</h2>
+<h2> 9. Instrucciones de Reproducibilidad</h2>
 
 <h3>1. Clonar el repositorio</h3>
-
-<pre><code>git clone [URL_DEL_REPOSITORIO]
+<pre><code>git clone https://github.com/santiiis/proyectobigdata.git
 cd proyectobigdata</code></pre>
 
-<h3>2. Abrir el notebook</h3>
+<h3>2. Abrir y ejecutar el notebook</h3>
+<ol>
+  <li>Abrir el archivo <code>notebooks/Proyecto_Final_BigData_Desercion.ipynb</code> en <strong>Google Colab</strong>.</li>
+  <li>En el menú superior, seleccionar: <strong>Entorno de ejecución &rarr; Reiniciar y ejecutar todo</strong>.</li>
+</ol>
 
-<p>
-  Abrir el archivo:
-</p>
-
-<pre><code>notebooks/Proyecto_Final_BigData_Desercion.ipynb</code></pre>
-
-<p>en Google Colab.</p>
-
-<h3>3. Ejecutar el proyecto</h3>
-
-<p>
-  En Google Colab seleccionar:
-</p>
-
-<pre><code>Entorno de ejecución → Reiniciar y ejecutar todo</code></pre>
-
-<p>El notebook ejecuta el siguiente flujo:</p>
+<p>El cuaderno ejecuta de forma secuencial y sin errores el siguiente flujo:</p>
 
 <pre>
-Carga de datos
-      ↓
-Pipeline ETL
-      ↓
-Almacenamiento en Parquet
-      ↓
-Modelado con Spark MLlib
-      ↓
-Experimentación con MLflow
-      ↓
-Evaluación de resultados
-      ↓
-Detección de anomalías
-      ↓
-Auditoría ética
+Carga e Ingesta OULAD ──> Pipeline ETL PySpark ──> Persistencia Parquet ──> Spark MLlib + MLflow ──> Evaluación y Ética
 </pre>
 
 <hr>
 
-<h2>Resultados Finales del Proyecto</h2>
+<h2> Resumen de Resultados Finales</h2>
 
-<table>
+<table width="100%" border="1" cellpadding="6" cellspacing="0">
   <thead>
-    <tr>
-      <th>Indicador</th>
-      <th>Resultado</th>
+    <tr bgcolor="#f2f2f2">
+      <th align="left">Métrica / Componente</th>
+      <th align="center">Cifra Real Obtenida</th>
+      <th align="left">Conclusión de Negocio</th>
     </tr>
   </thead>
-
   <tbody>
     <tr>
-      <td>Registros iniciales</td>
-      <td>32,593</td>
+      <td>Registros finales procesados</td>
+      <td align="center"><strong>32,557</strong></td>
+      <td>Integración completa de perfiles OULAD con 100% de consistencia</td>
     </tr>
-
     <tr>
-      <td>Registros finales tras ETL</td>
-      <td><strong>32,557</strong></td>
+      <td>Optimización de almacenamiento</td>
+      <td align="center"><strong>68.5%</strong></td>
+      <td>Ahorro de espacio y aceleración de consultas con Parquet particionado</td>
     </tr>
-
     <tr>
-      <td>Reducción de almacenamiento</td>
-      <td><strong>68.5%</strong></td>
+      <td>Modelo óptimo seleccionado</td>
+      <td align="center"><strong>Logistic Regression</strong></td>
+      <td>Mayor capacidad de discriminación con mínima sobrecarga computacional</td>
     </tr>
-
     <tr>
-      <td>Modelo seleccionado</td>
-      <td><strong>Logistic Regression</strong></td>
+      <td>AUC-ROC en conjunto de test</td>
+      <td align="center"><strong>0.8413</strong></td>
+      <td>Supera holgadamente el criterio de éxito (&ge; 0.80)</td>
     </tr>
-
     <tr>
-      <td>AUC-ROC</td>
-      <td><strong>0.8413</strong></td>
+      <td>F1-Score en conjunto de test</td>
+      <td align="center"><strong>0.7539</strong></td>
+      <td>Cumple con el estándar mínimo establecido (&ge; 0.75)</td>
     </tr>
-
     <tr>
-      <td>F1-Score</td>
-      <td><strong>0.7539</strong></td>
+      <td>Anomalías detectadas (Z-Score &gt; 3.0)</td>
+      <td align="center"><strong>599 (1.84%)</strong></td>
+      <td>Identificación y aislamiento de patrones estadísticamente atípicos</td>
     </tr>
-
     <tr>
-      <td>Registros atípicos detectados</td>
-      <td><strong>599 (1.84%)</strong></td>
-    </tr>
-
-    <tr>
-      <td>Importancia conjunta de variables principales</td>
-      <td><strong>94.63%</strong></td>
+      <td>Poder explicativo conjunto (sum_click + repitencia)</td>
+      <td align="center"><strong>94.63%</strong></td>
+      <td>Confirma que la interacción temprana y los antecedentes definen la deserción</td>
     </tr>
   </tbody>
 </table>
-
-<hr>
-
-<h2>Conclusión</h2>
-
-<p>
-  El proyecto permitió construir un flujo completo de análisis Big Data para la
-  <strong>predicción del riesgo de deserción estudiantil</strong>, integrando procesamiento
-  distribuido con PySpark, almacenamiento en Parquet, modelado mediante Spark MLlib,
-  experimentación con MLflow y una evaluación de gobierno y ética de datos.
-</p>
-
-<p>
-  El modelo de <strong>Regresión Logística</strong> obtuvo un
-  <strong>AUC-ROC de 0.8413</strong> y un <strong>F1-Score de 0.7539</strong>,
-  cumpliendo las métricas definidas para el proyecto.
-</p>
-
-<p>
-  Los resultados muestran que la interacción en el entorno virtual
-  (<code>sum_click</code>) y los intentos previos
-  (<code>num_of_prev_attempts</code>) son las variables con mayor influencia
-  dentro del modelo, concentrando conjuntamente el <strong>94.63%</strong>
-  de la importancia relativa.
-</p>
-
-<p>
-  El modelo puede utilizarse como un sistema de <strong>alerta temprana</strong>
-  para apoyar la identificación de estudiantes que podrían requerir acompañamiento
-  académico. Sin embargo, las predicciones deben utilizarse como apoyo para la toma
-  de decisiones y siempre complementarse con revisión humana.
-</p>
