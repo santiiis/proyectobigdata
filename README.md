@@ -54,7 +54,7 @@
 
 <hr>
 
-<h2>⚙️ 4. Pipeline ETL y Almacenamiento Columnar</h2>
+<h2> 4. Pipeline ETL y Almacenamiento Columnar</h2>
 <p>Procesamiento distribuido con PySpark:</p>
 <ol>
   <li><b>Agregación masiva de telemetría:</b> Procesamiento y reducción distribuida de los <b>+10.6 millones de clics</b> hacia los 32,593 perfiles únicos consolidados mediante <code>groupBy("id_student", "code_module").sum("sum_click")</code>.</li>
